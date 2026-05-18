@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Splitexp - Group Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#e1e3e4",
+                    "outline-variant": "#c7c4d7",
+                    "tertiary-container": "#8f3400",
+                    "background": "#f8f9fa",
+                    "on-primary-fixed-variant": "#372abf",
+                    "inverse-primary": "#c3c0ff",
+                    "on-primary-container": "#c1beff",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2e3132",
+                    "secondary-fixed": "#6ffbbe",
+                    "surface-container-high": "#e7e8e9",
+                    "on-surface": "#191c1d",
+                    "surface": "#f8f9fa",
+                    "on-secondary-container": "#00714d",
+                    "tertiary-fixed-dim": "#ffb597",
+                    "secondary-fixed-dim": "#4edea3",
+                    "surface-dim": "#d9dadb",
+                    "on-primary-fixed": "#100069",
+                    "error-container": "#ffdad6",
+                    "secondary": "#006c49",
+                    "surface-bright": "#f8f9fa",
+                    "tertiary-fixed": "#ffdbcd",
+                    "inverse-on-surface": "#f0f1f2",
+                    "primary-container": "#4338ca",
+                    "outline": "#777586",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#005236",
+                    "primary-fixed": "#e3dfff",
+                    "on-tertiary-container": "#ffb393",
+                    "surface-container": "#edeeef",
+                    "surface-variant": "#e1e3e4",
+                    "surface-container-low": "#f3f4f5",
+                    "primary": "#2a14b4",
+                    "secondary-container": "#6cf8bb",
+                    "on-secondary-fixed": "#002113",
+                    "on-tertiary-fixed": "#360f00",
+                    "on-background": "#191c1d",
+                    "on-surface-variant": "#464554",
+                    "tertiary": "#692400",
+                    "on-primary": "#ffffff",
+                    "surface-tint": "#5148d7",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "48px",
+                    "md": "24px",
+                    "base": "8px",
+                    "sm": "12px",
+                    "xs": "4px",
+                    "xl": "64px",
+                    "gutter": "16px",
+                    "margin-mobile": "20px",
+                    "lg": "40px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-xl-mobile": ["Inter"],
+                    "label-md": ["Inter"],
+                    "label-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex justify-between items-center w-full px-margin-desktop h-16 max-w-[1280px] mx-auto bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none">
+<div class="flex items-center gap-xl">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">Splitexp</span>
+<nav class="hidden md:flex gap-md items-center h-full">
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant pb-1 hover:text-primary dark:hover:text-primary-fixed-dim transition-colors transition-opacity" href="#">Dashboard</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant pb-1 hover:text-primary dark:hover:text-primary-fixed-dim transition-colors transition-opacity" href="#">History</a>
+<a class="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 hover:text-primary dark:hover:text-primary-fixed-dim transition-colors transition-opacity" href="#">Groups</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="bg-primary-container text-on-primary-container px-md py-2 rounded-xl font-label-md flex items-center gap-xs hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[20px]" data-icon="qr_code_scanner">qr_code_scanner</span>
+                Scan Bill
+            </button>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="settings">settings</span>
+<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Close-up professional portrait of a smiling man with a neat beard in a minimalist modern office setting. The lighting is soft and natural, emphasizing a clean and approachable professional aesthetic. High-quality photography with a shallow depth of field, blurring the elegant workspace behind him." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBamg5guHm6EUd7uGbhNVdGabc7PNvNiaaru9ut_9uWQLrzQpSSZwMFKtx-u3-R3hKVN4F9F_3hqUmdQ1VQKkiXT088X9-C9WiBmK6op2Hr9MdCI1_Bprni1mctAPPIq9x1omXgb9TmkCssJ7SZe4FqXQVge9Z_6eT8dCuyoxoY350blvr8Q_TvYFPvnFdzWWKsAm7eP73EobAUgB-y5RUEfWYFLsqw4xmfeAZsfwr7yYWGCnYVV8BLqv8nl6Yo0AVKRcT8_3cJ9lg"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-desktop py-lg">
+<!-- Header & Action Row -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-xl gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Group Management</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage your shared expenses across different circles.</p>
+</div>
+<div class="flex gap-sm">
+<button class="flex items-center gap-xs px-md py-sm rounded-xl border border-outline text-primary font-label-md hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+                    Add Members
+                </button>
+<button class="flex items-center gap-xs px-md py-sm rounded-xl bg-primary text-on-primary font-label-md hover:opacity-90 shadow-sm transition-all">
+<span class="material-symbols-outlined" data-icon="group_add">group_add</span>
+                    Create New Group
+                </button>
+</div>
+</div>
+<!-- Bento Grid for Groups -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-md mb-xl">
+<!-- Featured Group: Roommates -->
+<div class="md:col-span-8 group relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-md flex flex-col md:flex-row gap-md border border-outline-variant/30">
+<div class="w-full md:w-1/3 aspect-square rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A brightly lit, modern kitchen and living space featuring minimalist wooden furniture and white walls. The scene is clean and warm, representing a harmonious shared living environment. Soft sunlight streams through large windows, highlighting the peaceful morning atmosphere of a well-kept apartment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6oyDnAopNUbKWAuY_VQhcyXnNeoG_vm23icBgl2r8af0bapj05T42dDNGhLFJvQ6ei3Ylrfx5nEQPh_8evm2IAFxEV8RGx7AwjlmTzzV4G_LLAUiyc5xTR2e3WkyC8AuykDuNoAdDA8zEvW5mzHNBVleC5YmCNtU5jhzDDmA74SAJL6gsmdixrsJfS0D8ExHUfduYcLnFBwYfHDApT4j2sZ_ff5ZESRjGne1cBsjkmah1DhTjrP8OF52vFNsXkL5db8urR8yXM30"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-sm">
+<span class="text-white font-headline-md">Roommates</span>
+<span class="text-white/80 font-body-sm">4 Active Members</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-primary">Relationship Mapping</h3>
+<span class="bg-secondary-container text-on-secondary-container px-sm py-xs rounded-full font-label-sm">In Balance</span>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm bg-surface-container rounded-lg">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold">JD</div>
+<span class="font-body-md">John Doe owes you</span>
+</div>
+<span class="font-label-md text-secondary">$42.50</span>
+</div>
+<div class="flex items-center justify-between p-sm bg-surface-container rounded-lg">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-tertiary font-bold">MS</div>
+<span class="font-body-md">You owe Maria S.</span>
+</div>
+<span class="font-label-md text-error">$15.00</span>
+</div>
+</div>
+</div>
+<button class="mt-md text-primary font-label-md flex items-center gap-xs self-end group-hover:gap-sm transition-all">
+                        View Detailed Breakdown <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Small Group: Trip to Japan -->
+<div class="md:col-span-4 rounded-xl bg-surface-container-lowest shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-md border border-outline-variant/30 flex flex-col justify-between">
+<div>
+<div class="w-full h-32 rounded-lg overflow-hidden mb-md">
+<img class="w-full h-full object-cover" data-alt="A cinematic view of a traditional Japanese temple surrounded by vibrant cherry blossoms and lush greenery. The lighting is golden hour, creating a serene and magical atmosphere. The image uses a clean, travel-focused aesthetic with high clarity and balanced composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmk3Kc9OjejAheh6s6cRZCxvAiiFWkNj3eukt9UWLmszPUV_4Gncrpon0S_HnCWJdcO2brOUxhV0j5cOWlWIsidROTJKH7z-HFSfyUNWWyI22uKZtIpZKTG1rGFfMc6lXaNVqwac3-QMJIQGPKkkXSoBgRFiuUAZm8mKtpeMrnB9jlPX_1kZYvtosrs74UH9CoT2aLsmmqwmeXc4dsD0n3Pjej9vy5MVJ-LxV-Nq3L2V2OqICeEKuicSZ18WrPH5hlFDBg-_wGI6Q"/>
+</div>
+<div class="flex justify-between items-center mb-base">
+<h3 class="font-headline-md text-headline-md text-on-surface">Trip to Japan</h3>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Shared expenses for flights, sushi, and rail passes.</p>
+</div>
+<div class="space-y-sm">
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[65%]"></div>
+</div>
+<div class="flex justify-between font-label-sm">
+<span class="text-on-surface-variant">Total Spent</span>
+<span class="text-primary">$2,450.00</span>
+</div>
+</div>
+</div>
+<!-- Quick Stats Card -->
+<div class="md:col-span-4 rounded-xl bg-primary-container text-on-primary-container p-md shadow-lg flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined text-[32px] mb-sm" data-icon="account_balance_wallet">account_balance_wallet</span>
+<h4 class="font-headline-md">Total Balance</h4>
+<p class="font-body-sm opacity-80">Across 5 groups</p>
+</div>
+<div class="mt-xl">
+<span class="font-headline-xl block">$342.10</span>
+<span class="font-label-md flex items-center gap-xs"><span class="material-symbols-outlined text-secondary-container" data-icon="trending_up">trending_up</span> 12% from last month</span>
+</div>
+</div>
+<!-- Secondary Group: Friday Soccer -->
+<div class="md:col-span-4 rounded-xl bg-surface-container-lowest shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-md border border-outline-variant/30">
+<div class="flex items-center gap-md mb-md">
+<div class="w-12 h-12 rounded-xl bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="sports_soccer">sports_soccer</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md">Friday Soccer</h3>
+<span class="font-body-sm text-on-surface-variant">8 Members</span>
+</div>
+</div>
+<div class="flex -space-x-3 mb-md">
+<img class="w-8 h-8 rounded-full border-2 border-surface" data-alt="Close-up portrait of a young man with a friendly expression. Minimalist and professional style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjc3ofnjkCOdKkVdfLVK14lHsrPTAllSjTPhztX1rRlmXY8pbHfzdZtGUYi8uXayvOVVi3Eg-QYfzZHTYEJMfB4ypjSkBs80L9PscbRuIwgqLqrIeAf87s1S1jFQw7kwMGWqy2na4Mh6iDoLA9zhxpEyxjR1-YGONTlXrH87lR5GvmNrp9JxtyYYJdjBUT7DIiVSxqc4LYtfcqkpw6CE5eFpY2RSDqowN278a3nAu0u4QkvPaLidjvRh9DiFCfWTGWX-y-a9TQ5Xs"/>
+<img class="w-8 h-8 rounded-full border-2 border-surface" data-alt="Portrait of a woman with a clean, modern aesthetic and soft lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtuzdZs-Pxzpn0XeufpHcG_5rdm24Mx6-gcLhAGbJ_4t4FDfFGxtZi4CAtyfcBcglNbFrF6wkWHsygByWhgQT0dXTaTweNhPN_6uYLkcYvgTUpsj_cnJlA6RdD_lmn9XejWxIqM218MkVoL2BjbUcy7wdu9Erim4tctzkdKNb1zTFJG_vhCpIes6JCuaiGZT0aAMKaLt-WpDXzVhb3AxkhBbme-nFPoVIbFh9T8lP5cNOkYeafK7gPTPMsCt9kpM9Eu6BvPxyBZFM"/>
+<img class="w-8 h-8 rounded-full border-2 border-surface" data-alt="Close-up portrait of a man in professional attire with neutral lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMKIdeg2kVXjXYK4oYMX7-C2ms14U2vWR7YEI3sEbsnA3aort9fh3DDeTazfgtYBwSPI2pHouGQzDPn4LItmXzxjr47moYOdqvmgC6NDcIMerYLpZ28cesCBPUlk-miA6fXPE1nPlFGDlr3dqEiG7OOUklanOkIUGxg-uGEv1HssggeXOmQB98aFcOYHo9lLmM2Ctr_MSA15M27qW3TLNSa_1oHqT4Vl0U8aQ_ObCLEmiM-XDPVhyM7jSgJp8JJOQN7Xdu-i4FfhU"/>
+<div class="w-8 h-8 rounded-full border-2 border-surface bg-surface-container flex items-center justify-center text-label-sm">+5</div>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg flex justify-between items-center">
+<span class="font-body-sm">Next Payment</span>
+<span class="font-label-md">Oct 24</span>
+</div>
+</div>
+<!-- Group Request Card -->
+<div class="md:col-span-4 rounded-xl border-2 border-dashed border-outline-variant p-md flex flex-col items-center justify-center text-center gap-sm bg-transparent hover:bg-surface-container/30 transition-colors cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-outline" data-icon="add">add</span>
+</div>
+<div>
+<h4 class="font-label-md text-on-surface">Start a new circle</h4>
+<p class="font-body-sm text-on-surface-variant">Dining, travel, or bills</p>
+</div>
+</div>
+</div>
+<!-- Detailed Breakdown Section (Mocked 'Inside View') -->
+<section class="mt-xl">
+<h2 class="font-headline-md text-headline-md mb-md">Active Settlement: Roommates</h2>
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_10px_32px_rgba(0,0,0,0.08)] overflow-hidden border border-outline-variant/20">
+<div class="p-md bg-primary-container text-on-primary-container flex justify-between items-center">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-headline-md">Optimization Map</span>
+</div>
+<span class="font-label-md bg-white/20 px-sm py-xs rounded-full">3 Transfers Needed</span>
+</div>
+<div class="p-md grid md:grid-cols-2 gap-lg">
+<!-- Visual Mapping -->
+<div class="space-y-md">
+<h4 class="font-label-md text-on-surface-variant uppercase tracking-wider">The Flow</h4>
+<div class="relative space-y-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center font-bold">JD</div>
+<span class="font-body-md">John Doe</span>
+</div>
+<div class="flex-1 border-t border-dashed border-outline mx-md relative">
+<span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-2 text-secondary font-label-sm">$22.00</span>
+<span class="material-symbols-outlined absolute right-0 top-1/2 -translate-y-1/2 text-secondary text-[16px]" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="font-body-md">You</span>
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold">ME</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center font-bold">MS</div>
+<span class="font-body-md">Maria S.</span>
+</div>
+<div class="flex-1 border-t border-dashed border-outline mx-md relative">
+<span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-2 text-secondary font-label-sm">$15.50</span>
+<span class="material-symbols-outlined absolute right-0 top-1/2 -translate-y-1/2 text-secondary text-[16px]" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="font-body-md">John Doe</span>
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center font-bold">JD</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity -->
+<div class="bg-surface-container-low p-md rounded-xl">
+<h4 class="font-label-md text-on-surface-variant mb-md">RECENT ACTIVITY</h4>
+<div class="space-y-md">
+<div class="flex justify-between items-center pb-sm border-b border-outline-variant">
+<div>
+<p class="font-label-md">Internet Bill</p>
+<p class="font-body-sm text-on-surface-variant">Paid by You</p>
+</div>
+<span class="font-label-md text-secondary">+$85.00</span>
+</div>
+<div class="flex justify-between items-center pb-sm border-b border-outline-variant">
+<div>
+<p class="font-label-md">Grocery Run</p>
+<p class="font-body-sm text-on-surface-variant">Paid by Maria S.</p>
+</div>
+<span class="font-label-md text-error">-$42.00</span>
+</div>
+<button class="w-full text-center py-base font-label-sm text-primary hover:underline">View All Expenses</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-lg px-margin-desktop flex flex-col md:flex-row justify-between items-center max-w-[1280px] mx-auto bg-surface-container-low dark:bg-surface-container-lowest border-t border-outline-variant transition-all duration-200">
+<div class="mb-md md:mb-0">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">Splitexp</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">© 2024 Splitexp Financial. All rights reserved.</p>
+</div>
+<div class="flex gap-md flex-wrap justify-center">
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant hover:underline hover:text-primary transition-all" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant hover:underline hover:text-primary transition-all" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant hover:underline hover:text-primary transition-all" href="#">Help Center</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant hover:underline hover:text-primary transition-all" href="#">Contact Us</a>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settle Balances - Splitexp</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#2a14b4",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "on-secondary-container": "#00714d",
+                    "on-primary-container": "#c1beff",
+                    "surface-container-low": "#f3f4f5",
+                    "on-tertiary-fixed": "#360f00",
+                    "surface": "#f8f9fa",
+                    "secondary-fixed-dim": "#4edea3",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-primary-fixed-variant": "#372abf",
+                    "outline": "#777586",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e7e8e9",
+                    "on-surface-variant": "#464554",
+                    "secondary-container": "#6cf8bb",
+                    "on-primary-fixed": "#100069",
+                    "on-error-container": "#93000a",
+                    "on-background": "#191c1d",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-secondary-fixed-variant": "#005236",
+                    "primary-fixed": "#e3dfff",
+                    "on-secondary-fixed": "#002113",
+                    "on-tertiary-container": "#ffb393",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "outline-variant": "#c7c4d7",
+                    "surface-container": "#edeeef",
+                    "surface-container-highest": "#e1e3e4",
+                    "surface-bright": "#f8f9fa",
+                    "tertiary-fixed": "#ffdbcd",
+                    "surface-tint": "#5148d7",
+                    "surface-dim": "#d9dadb",
+                    "on-surface": "#191c1d",
+                    "error-container": "#ffdad6",
+                    "inverse-primary": "#c3c0ff",
+                    "secondary-fixed": "#6ffbbe",
+                    "secondary": "#006c49",
+                    "tertiary-container": "#8f3400",
+                    "primary-container": "#4338ca",
+                    "inverse-surface": "#2e3132",
+                    "tertiary-fixed-dim": "#ffb597",
+                    "tertiary": "#692400",
+                    "surface-variant": "#e1e3e4",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f8f9fa"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "sm": "12px",
+                    "lg": "40px",
+                    "gutter": "16px",
+                    "base": "8px",
+                    "xl": "64px",
+                    "margin-desktop": "48px",
+                    "margin-mobile": "20px",
+                    "md": "24px"
+            },
+            "fontFamily": {
+                    "label-md": ["Inter"],
+                    "headline-xl-mobile": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex justify-between items-center w-full px-margin-desktop h-16 max-w-[1280px] mx-auto bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none">
+<div class="flex items-center gap-lg">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">Splitexp</span>
+<nav class="hidden md:flex gap-md">
+<a class="text-on-surface-variant dark:text-surface-variant pb-1 font-label-md text-label-md hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-on-surface-variant dark:text-surface-variant pb-1 font-label-md text-label-md hover:text-primary transition-colors" href="#">History</a>
+<a class="text-on-surface-variant dark:text-surface-variant pb-1 font-label-md text-label-md hover:text-primary transition-colors" href="#">Groups</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="bg-primary-container text-white px-md py-sm rounded-lg font-label-md text-label-md hover:opacity-80 transition-opacity">Scan Bill</button>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="settings">settings</span>
+<img alt="User profile" class="w-8 h-8 rounded-full bg-surface-container" data-alt="A professional studio portrait of a young adult male with a friendly expression, short dark hair, and modern glasses. The lighting is soft and flattering, emphasizing clean facial features against a neutral, minimalist light grey background that fits a high-end financial application's aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXwNnXH17jmuuWjzHWgi9oV8hAEdaiqKNGgsbJgKIjuAPZgS2H-wUVN6yzHUKMJadMtyJACg7MOmwadV41OcnhgYGG96lfVPhjY2RF3T-uitcM4zklGxPspcpb-OMA5xI1QAxdE36soPPpTJFMozk_RnjfwN8i7r6WeN9N0e2PU1SyspShnts8bF783fuK5vB1Zud73X83FwRSd2LiMhKAFn4ge3If1zwBDgW-GtTQr-_uDYRF1xRIiOzU174INl-a98aMUmvzNG0"/>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-desktop py-xl">
+<div class="flex flex-col lg:flex-row gap-lg">
+<!-- Left Column: Balances -->
+<div class="flex-grow space-y-md">
+<div class="mb-lg">
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-xs">Settle Balances</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Review and pay your outstanding debts to keep the peace.</p>
+</div>
+<!-- Debt List -->
+<div class="space-y-sm">
+<!-- Friend Row 1 -->
+<div class="bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-md">
+<img alt="Sarah J." class="w-12 h-12 rounded-full" data-alt="A detailed headshot of a smiling woman with long brown hair wearing a professional navy blue blouse. The image is captured in soft natural daylight within a modern, airy office environment, reflecting a sense of financial trust and social harmony." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzozYlTjs1PWviLS5TLsBGFZQ4T6yreLPf8pVb35aKaU96OsqyBFXL80plAP2fAiJAfnD0MNi7395udBnTsP-EaE7t7VEo1iel_cDqQzwRYRyNM_a6vt75QJKiqEezAHjaVhIf0Kzs2fyLGiuVYJlH4RX8hno-iACBzlMfzqjVroSzrDoqBlCQJFsvB9CX8rZrBIPYlpf0xyFG3NShL9UhKw0UuvVov6KftAlNPySN_pglJK6dj4hyemEVMIEjINoFmh74ETHsoa8"/>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Sarah Jenkins</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Dinner at The Bistro</p>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<span class="font-headline-md text-headline-md text-error">$42.50</span>
+<button class="bg-surface-container-high text-primary px-md py-sm rounded-lg font-label-md text-label-md hover:bg-primary-fixed transition-colors">Settle</button>
+</div>
+</div>
+<!-- Friend Row 2 -->
+<div class="bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-md">
+<img alt="Mike R." class="w-12 h-12 rounded-full" data-alt="A clean, minimalist portrait of a man with a short beard and a stylish charcoal sweater. He has a warm, approachable look. The background is a blurred high-end apartment interior with soft bokeh and bright, warm lighting, maintaining a premium and trustworthy financial app feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAlDi_p0_IT8BUJPp3XJHD1JEhP6cOaYM7CqKupufhAR5wyGR-0mRTny47cmeDvrwWbfJxaJfQhrt4MhKqXoP896IA86PqM8D0a5NzMKSzRLCgUiq_tC439pmkzoNu5cSe-ywO-H-xLkYSrHQcDEfvRSsIMbR7oFMR2Utn5gAxBWHT02BTjwVDjIwRyHUscRuQV7hg8zjGem8L2q1RIAIsCUYowFja1UpL5BhM7Mdyjgpf_6rqBbP1SHOsyeMTqZugxeDV4TG1X7A"/>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Mike Ross</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Electric Bill - Oct</p>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<span class="font-headline-md text-headline-md text-error">$118.20</span>
+<button class="bg-surface-container-high text-primary px-md py-sm rounded-lg font-label-md text-label-md hover:bg-primary-fixed transition-colors">Settle</button>
+</div>
+</div>
+<!-- Friend Row 3 -->
+<div class="bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant flex items-center justify-between opacity-60">
+<div class="flex items-center gap-md">
+<img alt="Elena K." class="w-12 h-12 rounded-full" data-alt="A professional close-up of a woman with dark curly hair and a bright smile. She is wearing a cream-colored knit sweater. The setting is a minimalist cafe with clean lines and soft, diffused window light, conveying a sense of casual social harmony and effortless utility." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkYQvScv0WctApqTeWpSxwnpj3uQcY2bRbkRLdBZFjd4s9G1Mh_M-_qPp6VGrDOY5WEMSdwI9iUc-mC-gdYxuUj0xzGvPKrHIaZjK0HlNpljqW2MAASGULAxedz2kr8hIgwutMx4KlhcXCit4yCErodnDIKbAhO2uvVEtkccQiTg5un21gZ929cgQnA42ovKvZFqkJTJKHLer0Hjot2RI76yST9LAK1YHu3EGsPZ7JhYVfVS2RD50zAo6dbLRO4X8koPfizjPPigo"/>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Elena Kovic</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Weekend Trip Gas</p>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<span class="font-headline-md text-headline-md text-on-surface-variant">$15.00</span>
+<button class="bg-secondary text-white px-md py-sm rounded-lg font-label-md text-label-md flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="check" data-weight="fill">check</span>
+                                Paid
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Summary & Payment -->
+<div class="w-full lg:w-[400px] space-y-md">
+<!-- Summary Section -->
+<div class="bg-surface-container-lowest p-lg rounded-xl card-shadow border border-outline-variant">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-md">Payment Summary</h2>
+<div class="space-y-sm mb-lg">
+<div class="flex justify-between font-body-md text-body-md text-on-surface">
+<span>To Sarah Jenkins</span>
+<span>$42.50</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-on-surface">
+<span>To Mike Ross</span>
+<span>$118.20</span>
+</div>
+<div class="pt-sm border-t border-outline-variant flex justify-between">
+<span class="font-label-md text-label-md text-on-surface">Total Amount</span>
+<span class="font-headline-md text-headline-md text-primary">$160.70</span>
+</div>
+</div>
+<!-- Payment Method Selector -->
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-sm">Payment Method</h2>
+<div class="space-y-sm mb-lg">
+<label class="flex items-center justify-between p-sm border border-primary bg-primary-fixed rounded-lg cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+<span class="font-label-md text-label-md text-on-primary-fixed-variant">Bank Transfer</span>
+</div>
+<input checked="" class="text-primary focus:ring-primary h-4 w-4" name="payment" type="radio"/>
+</label>
+<label class="flex items-center justify-between p-sm border border-outline-variant hover:border-primary-fixed transition-colors rounded-lg cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md text-on-surface">Venmo</span>
+</div>
+<input class="text-primary focus:ring-primary h-4 w-4" name="payment" type="radio"/>
+</label>
+<label class="flex items-center justify-between p-sm border border-outline-variant hover:border-primary-fixed transition-colors rounded-lg cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="credit_card">credit_card</span>
+<span class="font-label-md text-label-md text-on-surface">PayPal</span>
+</div>
+<input class="text-primary focus:ring-primary h-4 w-4" name="payment" type="radio"/>
+</label>
+</div>
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-md rounded-xl hover:opacity-90 transition-all shadow-md">
+                        Confirm Settlement
+                    </button>
+<p class="mt-md text-center font-body-sm text-body-sm text-on-surface-variant">
+                        Payments are processed securely via Splitexp Financial services.
+                    </p>
+</div>
+<!-- Bento Info Card -->
+<div class="bg-primary text-on-primary p-md rounded-xl flex items-center gap-md">
+<div class="p-sm bg-on-primary-container rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="verified_user">verified_user</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md">Debt Protection Active</h4>
+<p class="font-body-sm text-body-sm opacity-80">Your payments are fully protected and documented.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-lg px-margin-desktop bg-surface-container-low dark:bg-surface-container-lowest border-t border-outline-variant">
+<div class="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="flex flex-col items-center md:items-start gap-xs">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">Splitexp</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 Splitexp Financial. All rights reserved.</p>
+</div>
+<nav class="flex gap-lg">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:underline hover:text-primary transition-all duration-200" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:underline hover:text-primary transition-all duration-200" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:underline hover:text-primary transition-all duration-200" href="#">Help Center</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:underline hover:text-primary transition-all duration-200" href="#">Contact Us</a>
+</nav>
+</div>
+</footer>
+</body></html>
