@@ -11,6 +11,9 @@ function GroupManagement({ user }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [groupToDelete, setGroupToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
   
   // Form Inputs
   const [newGroupName, setNewGroupName] = useState('');
@@ -49,6 +52,7 @@ function GroupManagement({ user }) {
       .map(n => n.trim())
       .filter(n => n);
       
+    setError(null);
     try {
       const g = await createGroup(newGroupName.trim(), user, names);
       setGroups(prev => [g, ...prev]);
@@ -57,6 +61,7 @@ function GroupManagement({ user }) {
       setNewGroupMembers('');
     } catch (err) {
       console.error("Error creating group:", err);
+      setError(err.message || "Failed to create group. Please check your connection.");
     }
   };
 
@@ -64,6 +69,7 @@ function GroupManagement({ user }) {
     e.preventDefault();
     if (!newMemberName.trim() || !selectedGroup) return;
     
+    setError(null);
     try {
       const newMember = await addMemberToGroup(selectedGroup.id, newMemberName.trim());
       setGroups(prev => prev.map(g => {
@@ -79,17 +85,23 @@ function GroupManagement({ user }) {
       setNewMemberName('');
     } catch (err) {
       console.error("Error adding member:", err);
+      setError(err.message || "Failed to add member. Please try again.");
     }
   };
 
-  const handleDeleteGroup = async (groupId) => {
-    if (window.confirm("Are you sure you want to delete this group?")) {
-      try {
-        await deleteGroup(groupId);
-        setGroups(prev => prev.filter(g => g.id !== groupId));
-      } catch (err) {
-        console.error("Error deleting group:", err);
-      }
+  const handleConfirmDelete = async () => {
+    if (!groupToDelete) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteGroup(groupToDelete.id);
+      setGroups(prev => prev.filter(g => g.id !== groupToDelete.id));
+      setGroupToDelete(null);
+    } catch (err) {
+      console.error("Error deleting group:", err);
+      setError(err.message || "Failed to delete group. Please check your permissions or connection.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -120,6 +132,16 @@ function GroupManagement({ user }) {
         </div>
       </div>
 
+      {error && (
+        <div className="mb-md p-md bg-error-container text-on-error-container rounded-xl flex items-center justify-between border border-error/20 animate-fade-in">
+          <div className="flex items-center gap-sm">
+            <span className="material-symbols-outlined text-error">error</span>
+            <span className="font-body-md text-on-error-container">{error}</span>
+          </div>
+          <button onClick={() => setError(null)} className="text-outline hover:text-on-error-container material-symbols-outlined text-[20px]">close</button>
+        </div>
+      )}
+
       {/* Bento Grid for Groups */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-md mb-xl">
         {groups.map((group, index) => {
@@ -144,7 +166,7 @@ function GroupManagement({ user }) {
                       <span className="material-symbols-outlined">person_add</span>
                     </button>
                     <button 
-                      onClick={() => handleDeleteGroup(group.id)}
+                      onClick={() => setGroupToDelete(group)}
                       className="p-xs text-error hover:bg-error-container/20 rounded-full transition-colors flex items-center"
                       title="Delete Group"
                     >
@@ -312,6 +334,51 @@ function GroupManagement({ user }) {
                 <button type="button" onClick={() => setShowAddMemberModal(false)} className="flex-1 py-sm border border-outline-variant text-on-surface rounded-lg font-label-md hover:bg-surface-container transition-all">Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE GROUP CONFIRMATION MODAL */}
+      {groupToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-sm animate-fade-in">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg max-w-[450px] w-full ambient-shadow space-y-md">
+            <div className="flex justify-between items-center pb-xs border-b border-outline-variant/30">
+              <h3 className="font-headline-md text-headline-md text-on-surface text-error flex items-center gap-xs">
+                <span className="material-symbols-outlined text-error">warning</span>
+                Delete Group Circle?
+              </h3>
+              <button onClick={() => setGroupToDelete(null)} className="text-outline hover:text-on-surface material-symbols-outlined">close</button>
+            </div>
+            
+            <div className="space-y-sm font-body-md text-on-surface-variant">
+              <p>Are you sure you want to delete the group <span className="font-bold text-on-surface">"{groupToDelete.name}"</span>?</p>
+              <p>This action is permanent and cannot be undone. All membership records for this circle will be cleared.</p>
+            </div>
+
+            <div className="flex gap-sm pt-sm border-t border-outline-variant/30">
+              <button 
+                onClick={handleConfirmDelete} 
+                disabled={deleting}
+                className="flex-1 py-sm bg-error text-on-error rounded-lg font-label-md shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-xs disabled:opacity-50"
+              >
+                {deleting ? (
+                  <div className="w-5 h-5 border-2 border-on-error border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    Delete Group
+                  </>
+                )}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setGroupToDelete(null)} 
+                disabled={deleting}
+                className="flex-1 py-sm border border-outline-variant text-on-surface rounded-lg font-label-md hover:bg-surface-container transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
