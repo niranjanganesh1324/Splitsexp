@@ -4,12 +4,30 @@ import { getExpenses, getBalances } from '../services/db';
 
 function Dashboard({ user }) {
   const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      setExpenses(getExpenses(user.id));
+      setLoading(true);
+      getExpenses(user.id)
+        .then(data => {
+          setExpenses(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Error fetching expenses:", err);
+          setLoading(false);
+        });
     }
   }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-md flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   // Calculate simple mock balances based on expenses
   let totalOwed = 0;

@@ -1,10 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getBalances } from '../services/db';
 
 function SettleBalances({ user }) {
   const [selectedPayment, setSelectedPayment] = useState('bank');
-  const balances = getBalances(user.id);
-  
+  const [balances, setBalances] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      getBalances(user.id)
+        .then(data => {
+          setBalances(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Error fetching balances:", err);
+          setLoading(false);
+        });
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="max-w-[1280px] w-full mx-auto px-margin-mobile md:px-margin-desktop py-xl flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   // We want to show people we owe. 
   // balances structure: { friendId: amount }
   // positive amount means they owe us. negative amount means we owe them.

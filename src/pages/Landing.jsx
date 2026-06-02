@@ -6,28 +6,38 @@ function Landing({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
       // Very basic logic: if user doesn't exist, we auto-signup for demo simplicity
       // since the Stitch design only shows one form initially.
       let user;
       try {
-        user = login(email, password);
+        user = await login(email, password);
       } catch (err) {
-        if (err.message === "Invalid credentials") {
-           // fallback to signup
-           user = signup(email.split('@')[0], email, password);
+        if (
+          err.code === "auth/invalid-credential" ||
+          err.code === "auth/user-not-found" ||
+          err.message?.includes("credential") ||
+          err.message?.includes("user-not-found")
+        ) {
+          // fallback to signup
+          user = await signup(email.split('@')[0], email, password);
         } else {
-           throw err;
+          throw err;
         }
       }
       onLoginSuccess(user);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,7 +100,16 @@ function Landing({ onLoginSuccess }) {
                 <input className="rounded border-outline-variant text-primary focus:ring-primary" id="remember" type="checkbox"/>
                 <label className="text-body-sm text-on-surface-variant" htmlFor="remember">Keep me signed in</label>
               </div>
-              <button type="submit" className="w-full bg-primary text-on-primary py-md rounded-lg font-label-md shadow-sm hover:opacity-90 transition-all">Sign In</button>
+              <button type="submit" disabled={loading} className="w-full bg-primary text-on-primary py-md rounded-lg font-label-md shadow-sm hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-xs">
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </button>
             </form>
             
             <div className="relative my-lg text-center">

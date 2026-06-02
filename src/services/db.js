@@ -1,75 +1,209 @@
-export const generateId = () => Math.random().toString(36).substring(2, 9);
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  onAuthStateChanged,
+} from "firebase/auth";
 
-// Auth Mock
-export const login = (email, password) => {
-  const users = JSON.parse(localStorage.getItem('splitexp_users') || '[]');
-  const user = users.find(u => u.email === email && u.password === password);
-  if (user) {
-    localStorage.setItem('splitexp_currentUser', JSON.stringify(user));
-    return user;
-  }
-  throw new Error("Invalid credentials");
-};
+import {
+  doc,
+  setDoc,
+  addDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 
-export const signup = (name, email, password) => {
-  const users = JSON.parse(localStorage.getItem('splitexp_users') || '[]');
-  if (users.find(u => u.email === email)) {
-    throw new Error("Email already exists");
-  }
-  const newUser = { id: generateId(), name, email, password };
-  users.push(newUser);
-  localStorage.setItem('splitexp_users', JSON.stringify(users));
-  localStorage.setItem('splitexp_currentUser', JSON.stringify(newUser));
-  return newUser;
-};
+import { auth, db } from "./firebase";
 
-export const logout = () => {
-  localStorage.removeItem('splitexp_currentUser');
-};
+// AUTH
 
-export const getCurrentUser = () => {
-  const userStr = localStorage.getItem('splitexp_currentUser');
-  return userStr ? JSON.parse(userStr) : null;
-};
+export const signup = async (
+  name,
+  email,
+  password
+) => {
+  const cred =
+    await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
 
-// Expenses Mock
-export const getExpenses = (userId) => {
-  const expenses = JSON.parse(localStorage.getItem('splitexp_expenses') || '[]');
-  return expenses.filter(e => e.participants.some(p => p.id === userId) || e.paidBy === userId).sort((a,b) => b.timestamp - a.timestamp);
-};
-
-export const addExpense = (expenseData) => {
-  const expenses = JSON.parse(localStorage.getItem('splitexp_expenses') || '[]');
-  const newExpense = {
-    id: generateId(),
-    ...expenseData,
-    timestamp: Date.now()
-  };
-  expenses.push(newExpense);
-  localStorage.setItem('splitexp_expenses', JSON.stringify(expenses));
-  return newExpense;
-};
-
-export const getBalances = (userId) => {
-  const expenses = getExpenses(userId);
-  const balances = {}; // friendId: balance (positive means they owe me, negative means I owe them)
-  
-  expenses.forEach(exp => {
-    if (exp.paidBy === userId) {
-      // I paid, everyone else in participants owes me
-      exp.participants.forEach(p => {
-        if (p.id !== userId) {
-          balances[p.id] = (balances[p.id] || 0) + p.amount;
-        }
-      });
-    } else {
-      // Someone else paid. I owe them my share.
-      const myShare = exp.participants.find(p => p.id === userId)?.amount || 0;
-      if (myShare > 0) {
-        balances[exp.paidBy] = (balances[exp.paidBy] || 0) - myShare;
-      }
+  await updateProfile(
+    cred.user,
+    {
+      displayName: name,
     }
-  });
-  
-  return balances;
+  );
+
+  await setDoc(
+    doc(db, "users", cred.user.uid),
+    {
+      uid: cred.user.uid,
+      name,
+      email,
+      createdAt: Date.now(),
+    }
+  );
+
+  return {
+    id: cred.user.uid,
+    name,
+    email,
+  };
 };
+
+export const login = async (
+  email,
+  password
+) => {
+  const cred =
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+  return {
+    id: cred.user.uid,
+    name:
+      cred.user.displayName ||
+      "User",
+    email: cred.user.email,
+  };
+};
+
+export const logout = async () => {
+  await signOut(auth);
+};
+
+export const subscribeToAuthChanges = (
+  callback
+) => {
+  return onAuthStateChanged(
+    auth,
+    (user) => {
+      if (!user) {
+        callback(null);
+        return;
+      }
+
+      callback({
+        id: user.uid,
+        name:
+          user.displayName ||
+          "User",
+        email: user.email,
+      });
+    }
+  );
+};
+
+// EXPENSES
+
+export const getExpenses = async (
+  userId
+) => {
+  const q = query(
+    collection(db, "expenses"),
+    where(
+      "userIds",
+      "array-contains",
+      userId
+    )
+  );
+
+  const snapshot =
+    await getDocs(q);
+
+  const expenses =
+    snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+  return expenses.sort(
+    (a, b) =>
+      (b.timestamp?.seconds || 0) -
+      (a.timestamp?.seconds || 0)
+  );
+};
+
+export const addExpense = async (
+  expenseData
+) => {
+  const userIds = [
+    expenseData.paidBy,
+    ...expenseData.participants.map(
+      (p) => p.id
+    ),
+  ];
+
+  const docRef =
+    await addDoc(
+      collection(db, "expenses"),
+      {
+        ...expenseData,
+        userIds: [
+          ...new Set(userIds),
+        ],
+        timestamp:
+          serverTimestamp(),
+      }
+    );
+
+  return {
+    id: docRef.id,
+    ...expenseData,
+  };
+};
+
+export const getBalances =
+  async (userId) => {
+    const expenses =
+      await getExpenses(userId);
+
+    const balances = {};
+
+    expenses.forEach((exp) => {
+      if (
+        exp.paidBy === userId
+      ) {
+        exp.participants.forEach(
+          (p) => {
+            if (
+              p.id !== userId
+            ) {
+              balances[p.id] =
+                (balances[
+                  p.id
+                ] || 0) +
+                p.amount;
+            }
+          }
+        );
+      } else {
+        const myShare =
+          exp.participants.find(
+            (p) =>
+              p.id === userId
+          )?.amount || 0;
+
+        if (myShare > 0) {
+          balances[
+            exp.paidBy
+          ] =
+            (balances[
+              exp.paidBy
+            ] || 0) -
+            myShare;
+        }
+      }
+    });
+
+    return balances;
+  };

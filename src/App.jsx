@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { subscribeToAuthChanges, logout } from './services/db'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import Landing from './pages/Landing'
@@ -11,30 +12,43 @@ import SettleBalances from './pages/SettleBalances'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check local storage for existing session
-    const savedUser = localStorage.getItem('splitexp_user')
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser))
-    }
+    const unsubscribe = subscribeToAuthChanges((user) => {
+      setCurrentUser(user)
+      setLoading(false)
+    })
+
+    return unsubscribe
   }, [])
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user)
-    localStorage.setItem('splitexp_user', JSON.stringify(user))
   }
 
-  const handleLogout = () => {
-    setCurrentUser(null)
-    localStorage.removeItem('splitexp_user')
+  const handleLogout = async () => {
+    try {
+      await logout()
+      setCurrentUser(null)
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-background text-on-background min-h-screen flex items-center justify-center font-body-md">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
     <Router>
       <div className="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-x-hidden">
         <Header user={currentUser} onLogout={handleLogout} />
-        
+
         <Routes>
           <Route path="/" element={
             !currentUser ? <Landing onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/dashboard" />
@@ -56,7 +70,7 @@ function App() {
           } />
           {/* Add more routes later */}
         </Routes>
-        
+
         <Footer />
       </div>
     </Router>

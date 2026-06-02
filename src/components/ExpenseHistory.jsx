@@ -3,10 +3,26 @@ import { getExpenses } from '../services/db';
 
 function ExpenseHistory({ user }) {
   const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setExpenses(getExpenses(user.id));
+    if (user) {
+      setLoading(true);
+      getExpenses(user.id)
+        .then(data => {
+          setExpenses(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Error fetching expenses:", err);
+          setLoading(false);
+        });
+    }
   }, [user]);
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading expenses...</div>;
+  }
 
   // Calculate balances
   // Positive means people owe user. Negative means user owes people.

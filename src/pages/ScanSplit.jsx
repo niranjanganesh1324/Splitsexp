@@ -1,23 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addExpense } from '../services/db';
 
 function ScanSplit({ user }) {
   const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
 
-  const handleConfirm = () => {
-    // Add a mock expense
-    addExpense({
-      title: "Grocery Run",
-      amount: 248.50,
-      paidBy: user.id,
-      participants: [
-        { id: user.id, amount: 24.80 },
-        { id: "mock-friend-1", amount: 100.00 },
-        { id: "mock-friend-2", amount: 123.70 }
-      ]
-    });
-    navigate('/dashboard');
+  const handleConfirm = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await addExpense({
+        title: "Grocery Run",
+        amount: 248.50,
+        paidBy: user.id,
+        participants: [
+          { id: user.id, amount: 24.80 },
+          { id: "mock-friend-1", amount: 100.00 },
+          { id: "mock-friend-2", amount: 123.70 }
+        ]
+      });
+      navigate('/dashboard');
+    } catch (err) {
+      console.error("Error creating split:", err);
+      setSaving(false);
+    }
   };
 
   return (
@@ -113,9 +120,9 @@ function ScanSplit({ user }) {
                 <span className="font-body-md text-body-md text-on-surface-variant">Your Share ({user.name})</span>
                 <span className="font-headline-md text-headline-md text-on-surface">$24.80</span>
               </div>
-              <button onClick={handleConfirm} className="w-full py-md bg-primary text-on-primary rounded-xl font-label-md text-label-md shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-base">
-                Confirm and Create Split
-                <span className="material-symbols-outlined">arrow_forward</span>
+              <button onClick={handleConfirm} disabled={saving} className="w-full py-md bg-primary text-on-primary rounded-xl font-label-md text-label-md shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-base disabled:opacity-50">
+                {saving ? 'Creating Split...' : 'Confirm and Create Split'}
+                {!saving && <span className="material-symbols-outlined">arrow_forward</span>}
               </button>
             </div>
           </div>

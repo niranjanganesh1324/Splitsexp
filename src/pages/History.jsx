@@ -3,12 +3,30 @@ import { getExpenses } from '../services/db';
 
 function History({ user }) {
   const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      setExpenses(getExpenses(user.id));
+      setLoading(true);
+      getExpenses(user.id)
+        .then(data => {
+          setExpenses(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Error fetching expenses:", err);
+          setLoading(false);
+        });
     }
   }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   // Use mock data if db is empty for demonstration of the UI
   const displayExpenses = expenses.length > 0 ? expenses : [
