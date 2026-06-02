@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getGroups, createGroup, addMemberToGroup } from '../services/db';
+import { useLocation } from 'react-router-dom';
+import { getGroups, createGroup, addMemberToGroup, deleteGroup } from '../services/db';
 
 function GroupManagement({ user }) {
+  const location = useLocation();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -14,6 +16,14 @@ function GroupManagement({ user }) {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupMembers, setNewGroupMembers] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
+
+  useEffect(() => {
+    if (location.state?.openCreateModal) {
+      setShowCreateModal(true);
+      // Clear location state so modal doesn't reopen on reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (user) {
@@ -72,6 +82,17 @@ function GroupManagement({ user }) {
     }
   };
 
+  const handleDeleteGroup = async (groupId) => {
+    if (window.confirm("Are you sure you want to delete this group?")) {
+      try {
+        await deleteGroup(groupId);
+        setGroups(prev => prev.filter(g => g.id !== groupId));
+      } catch (err) {
+        console.error("Error deleting group:", err);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg flex items-center justify-center min-h-[400px]">
@@ -114,13 +135,22 @@ function GroupManagement({ user }) {
                     <h3 className="font-headline-md text-headline-md text-on-surface">{group.name}</h3>
                     <span className="text-outline font-body-sm">{group.members.length} Members</span>
                   </div>
-                  <button 
-                    onClick={() => { setSelectedGroup(group); setShowAddMemberModal(true); }}
-                    className="p-xs text-primary hover:bg-surface-container rounded-full transition-colors flex items-center"
-                    title="Add Member"
-                  >
-                    <span className="material-symbols-outlined">person_add</span>
-                  </button>
+                  <div className="flex gap-xs">
+                    <button 
+                      onClick={() => { setSelectedGroup(group); setShowAddMemberModal(true); }}
+                      className="p-xs text-primary hover:bg-surface-container rounded-full transition-colors flex items-center"
+                      title="Add Member"
+                    >
+                      <span className="material-symbols-outlined">person_add</span>
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteGroup(group.id)}
+                      className="p-xs text-error hover:bg-error-container/20 rounded-full transition-colors flex items-center"
+                      title="Delete Group"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Members list */}

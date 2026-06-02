@@ -41,12 +41,7 @@ function SettleBalances({ user }) {
 
   const totalOwed = debts.reduce((sum, d) => sum + d.amount, 0);
 
-  // Fallback mock debts if empty for UI demonstration
-  const displayDebts = debts.length > 0 ? debts : [
-    { friendId: 'mock-sarah', amount: 42.50, name: 'Sarah Jenkins', event: 'Dinner at The Bistro' },
-    { friendId: 'mock-mike', amount: 118.20, name: 'Mike Ross', event: 'Electric Bill - Oct' }
-  ];
-
+  const displayDebts = debts;
   const displayTotal = displayDebts.reduce((sum, d) => sum + d.amount, 0);
 
   return (
@@ -61,41 +56,31 @@ function SettleBalances({ user }) {
           
           {/* Debt List */}
           <div className="space-y-sm">
-            {displayDebts.map((debt, i) => (
-              <div key={i} className="bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant flex items-center justify-between">
-                <div className="flex items-center gap-md">
-                  <div className="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-lg">
-                    {(debt.name || debt.friendId).charAt(0).toUpperCase()}
+            {displayDebts.length === 0 ? (
+              <div className="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant text-center space-y-xs flex flex-col items-center justify-center min-h-[200px]">
+                <span className="material-symbols-outlined text-[48px] text-secondary mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                <h3 className="font-headline-md text-headline-md text-on-surface">You are all settled up!</h3>
+                <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm">No outstanding debts to settle. Excellent job managing your share!</p>
+              </div>
+            ) : (
+              displayDebts.map((debt, i) => (
+                <div key={i} className="bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant flex items-center justify-between">
+                  <div className="flex items-center gap-md">
+                    <div className="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-lg">
+                      {(debt.name || debt.friendId).charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-label-md text-label-md text-on-surface">{debt.name || debt.friendId}</h3>
+                      <p className="font-body-sm text-body-sm text-on-surface-variant">{debt.event || 'Owed Balance'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-label-md text-label-md text-on-surface">{debt.name || debt.friendId}</h3>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">{debt.event || 'Owed Balance'}</p>
+                  <div className="flex items-center gap-lg">
+                    <span className="font-headline-md text-headline-md text-error">${debt.amount.toFixed(2)}</span>
+                    <button className="bg-surface-container-high text-primary px-md py-sm rounded-lg font-label-md text-label-md hover:bg-primary-fixed transition-colors">Settle</button>
                   </div>
                 </div>
-                <div className="flex items-center gap-lg">
-                  <span className="font-headline-md text-headline-md text-error">${debt.amount.toFixed(2)}</span>
-                  <button className="bg-surface-container-high text-primary px-md py-sm rounded-lg font-label-md text-label-md hover:bg-primary-fixed transition-colors">Settle</button>
-                </div>
-              </div>
-            ))}
-
-            {/* Paid mock row */}
-            <div className="bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant flex items-center justify-between opacity-60">
-              <div className="flex items-center gap-md">
-                <div className="w-12 h-12 rounded-full bg-outline-variant flex items-center justify-center text-on-surface font-bold text-lg">E</div>
-                <div>
-                  <h3 className="font-label-md text-label-md text-on-surface">Elena Kovic</h3>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">Weekend Trip Gas</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-lg">
-                <span className="font-headline-md text-headline-md text-on-surface-variant">$15.00</span>
-                <button className="bg-secondary text-white px-md py-sm rounded-lg font-label-md text-label-md flex items-center gap-xs">
-                  <span className="material-symbols-outlined text-[18px]">check</span>
-                  Paid
-                </button>
-              </div>
-            </div>
+              ))
+            )}
           </div>
         </div>
 

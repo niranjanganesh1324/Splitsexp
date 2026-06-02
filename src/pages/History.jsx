@@ -28,17 +28,7 @@ function History({ user }) {
     );
   }
 
-  // Use mock data if db is empty for demonstration of the UI
-  const displayExpenses = expenses.length > 0 ? expenses : [
-    {
-      id: 1, title: 'Sushi Zen Night', group: 'Weekend Getaway Group', amount: 142.50, paidBy: user.id, date: 'Oct 24, 2024', category: 'Dining',
-      participants: [{ id: user.id, amount: 47.50 }, { id: 'other', amount: 95.00 }]
-    },
-    {
-      id: 2, title: 'Electric Bill - Oct', group: 'Home Suite Home', amount: 88.00, paidBy: 'other', date: 'Oct 22, 2024', category: 'Utilities',
-      participants: [{ id: user.id, amount: 44.00 }]
-    }
-  ];
+  const displayExpenses = expenses;
 
   return (
     <main className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg">
@@ -89,7 +79,14 @@ function History({ user }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {displayExpenses.map((exp, idx) => {
+              {displayExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-md py-xl text-center text-on-surface-variant font-body-md">
+                    No expenses recorded yet. Start splitting expenses with your circles!
+                  </td>
+                </tr>
+              ) : (
+                displayExpenses.map((exp, idx) => {
                 const iPaid = exp.paidBy === user.id;
                 const myShare = exp.participants.find(p => p.id === user.id)?.amount || 0;
                 
@@ -144,7 +141,8 @@ function History({ user }) {
                     </td>
                   </tr>
                 );
-              })}
+              })
+            )}
             </tbody>
           </table>
         </div>

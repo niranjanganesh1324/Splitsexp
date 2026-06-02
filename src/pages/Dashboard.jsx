@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getExpenses, getBalances } from '../services/db';
+import { Link, useNavigate } from 'react-router-dom';
+import { getExpenses, getGroups } from '../services/db';
 
 function Dashboard({ user }) {
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       setLoading(true);
-      getExpenses(user.id)
-        .then(data => {
-          setExpenses(data);
+      Promise.all([getExpenses(user.id), getGroups(user.id)])
+        .then(([expensesData, groupsData]) => {
+          setExpenses(expensesData);
+          setGroups(groupsData);
           setLoading(false);
         })
         .catch(err => {
-          console.error("Error fetching expenses:", err);
+          console.error("Error fetching dashboard data:", err);
           setLoading(false);
         });
     }
@@ -29,7 +32,7 @@ function Dashboard({ user }) {
     );
   }
 
-  // Calculate simple mock balances based on expenses
+  // Calculate real balances based on expenses
   let totalOwed = 0;
   let totalOwe = 0;
   expenses.forEach(exp => {
@@ -38,11 +41,79 @@ function Dashboard({ user }) {
       const myShare = exp.participants.find(p => p.id === user.id)?.amount || 0;
       totalOwed += (exp.amount - myShare);
     } else {
-      // Someone else paid, user might owe them
+      // Someone else paid, user owes their share
       const myShare = exp.participants.find(p => p.id === user.id)?.amount || 0;
       totalOwe += myShare;
     }
   });
+
+  // Calculate monthly spending
+  const calculateMonthlySpending = () => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    let total = 0;
+    expenses.forEach(exp => {
+      const expDate = exp.timestamp?.seconds 
+        ? new Date(exp.timestamp.seconds * 1000) 
+        : new Date(exp.timestamp || Date.now());
+      if (expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear) {
+        const myShare = exp.participants.find(p => p.id === user.id)?.amount || 0;
+        total += myShare;
+      }
+    });
+    return total;
+  };
+
+  const monthlySpending = calculateMonthlySpending();
+
+  // Weekly spending heights (for last 7 days)
+  const getWeeklyHeights = () => {
+    const daily = Array(7).fill(0);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    expenses.forEach(exp => {
+      const expDate = exp.timestamp?.seconds 
+        ? new Date(exp.timestamp.seconds * 1000) 
+        : new Date(exp.timestamp || Date.now());
+      
+      const diffTime = Math.abs(today - expDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) - 1;
+
+      if (diffDays >= 0 && diffDays < 7) {
+        const myShare = exp.participants.find(p => p.id === user.id)?.amount || 0;
+        daily[6 - diffDays] += myShare;
+      }
+    });
+
+    const maxVal = Math.max(...daily);
+    if (maxVal === 0) return Array(7).fill(15); // Default flat representation if no data
+    return daily.map(val => Math.max((val / maxVal) * 100, 10)); // Keep min height of 10% for visual design
+  };
+
+  const weeklyHeights = getWeeklyHeights();
+
+  // Dynamic Frequent Friends list
+  const getFrequentFriends = () => {
+    const friends = {};
+    groups.forEach(g => {
+      g.members.forEach(m => {
+        if (m.id !== user.id) {
+          friends[m.name] = (friends[m.name] || 0) + 1;
+        }
+      });
+    });
+    return Object.entries(friends)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name]) => name);
+  };
+
+  const frequentFriends = getFrequentFriends();
+
+  const handleCreateGroupClick = () => {
+    navigate('/groups', { state: { openCreateModal: true } });
+  };
 
   return (
     <main className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-md">
@@ -57,7 +128,10 @@ function Dashboard({ user }) {
             <span className="material-symbols-outlined">add</span>
             Add Expense
           </Link>
-          <button className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-surface-container-lowest text-primary border border-outline-variant px-md py-sm rounded-xl font-label-md ambient-shadow hover:bg-primary-fixed transition-all">
+          <button 
+            onClick={handleCreateGroupClick} 
+            className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-surface-container-lowest text-primary border border-outline-variant px-md py-sm rounded-xl font-label-md ambient-shadow hover:bg-primary-fixed transition-all"
+          >
             <span className="material-symbols-outlined">group_add</span>
             Create Group
           </button>
@@ -95,21 +169,18 @@ function Dashboard({ user }) {
         <div className="md:col-span-4 bg-surface-container-lowest rounded-xl p-md ambient-shadow border border-outline-variant/30 flex flex-col">
           <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Monthly Spending</span>
           <div className="flex items-end gap-xs mb-sm">
-            <span className="font-headline-md text-headline-md text-on-surface">$3,420</span>
-            <span className="font-body-sm text-body-sm text-secondary mb-1 flex items-center">
-              <span className="material-symbols-outlined text-[16px]">trending_down</span> 12%
-            </span>
+            <span className="font-headline-md text-headline-md text-on-surface">${monthlySpending.toFixed(2)}</span>
           </div>
           <div className="flex-grow flex items-end gap-xs h-32">
-            <div className="flex-1 bg-primary-container/20 rounded-t-sm h-[40%]"></div>
-            <div className="flex-1 bg-primary-container/20 rounded-t-sm h-[60%]"></div>
-            <div className="flex-1 bg-primary-container/20 rounded-t-sm h-[45%]"></div>
-            <div className="flex-1 bg-primary-container/20 rounded-t-sm h-[80%]"></div>
-            <div className="flex-1 bg-primary-container rounded-t-sm h-[95%]"></div>
-            <div className="flex-1 bg-primary-container/20 rounded-t-sm h-[55%]"></div>
-            <div className="flex-1 bg-primary-container/20 rounded-t-sm h-[30%]"></div>
+            {weeklyHeights.map((h, i) => (
+              <div 
+                key={i} 
+                className={`flex-1 rounded-t-sm transition-all duration-500 ${i === 6 ? 'bg-primary' : 'bg-primary-container/20'}`}
+                style={{ height: `${h}%` }}
+              ></div>
+            ))}
           </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant mt-sm">You've spent 8% less than last month. Keep it up!</p>
+          <p className="font-body-sm text-body-sm text-on-surface-variant mt-sm">Your dynamic 7-day spending distribution index.</p>
         </div>
 
         {/* Recent Activity */}
@@ -120,7 +191,7 @@ function Dashboard({ user }) {
           </div>
           <div className="space-y-base">
             {expenses.length === 0 ? (
-              <p className="text-on-surface-variant font-body-sm py-4">No recent activity found.</p>
+              <p className="text-on-surface-variant font-body-sm py-4">No recent activity found. Add an expense to start tracking!</p>
             ) : (
               expenses.slice(0, 3).map((exp, idx) => {
                 const iPaid = exp.paidBy === user.id;
@@ -132,20 +203,22 @@ function Dashboard({ user }) {
                     <div className="flex items-center gap-md">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-lg">
-                          {exp.title.charAt(0).toUpperCase()}
+                          {(exp.title || exp.description || 'E').charAt(0).toUpperCase()}
                         </div>
                       </div>
                       <div>
-                        <p className="font-label-md text-label-md text-on-surface">{exp.title}</p>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant">Added by {iPaid ? 'You' : 'Someone'} in <span className="font-medium text-on-surface">General</span></p>
+                        <p className="font-label-md text-label-md text-on-surface">{exp.title || exp.description}</p>
+                        <p className="font-body-sm text-body-sm text-on-surface-variant">
+                          Paid by {iPaid ? 'You' : 'Someone else'} in <span className="font-medium text-on-surface">{exp.group || "No Group"}</span>
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       {iPaid ? (
-                        <div className="flex gap-sm">
-                        <Link to="/settle" className="flex-1 bg-primary text-on-primary py-sm rounded-lg font-label-md hover:opacity-90 transition-opacity text-center">Settle Up</Link>
-                        <button className="flex-1 border border-outline-variant text-on-surface py-sm rounded-lg font-label-md hover:bg-surface-container-high transition-colors">Remind</button>
-                      </div>
+                        <div className="text-right">
+                          <p className="font-label-sm text-label-sm text-secondary">You lent</p>
+                          <p className="font-headline-sm text-headline-sm text-secondary">${impactAmount.toFixed(2)}</p>
+                        </div>
                       ) : (
                         <>
                           <p className="font-label-md text-label-md text-primary">You owe</p>
@@ -165,21 +238,19 @@ function Dashboard({ user }) {
           {/* Top Friends Card */}
           <div className="bg-surface-container-lowest rounded-xl p-md ambient-shadow border border-outline-variant/30">
             <h3 className="font-headline-md text-headline-md text-on-surface mb-md">Frequent Friends</h3>
-            <div className="flex justify-between gap-sm overflow-x-auto pb-xs">
-              <div className="flex flex-col items-center gap-xs min-w-[64px]">
-                <img className="w-12 h-12 rounded-full border-2 border-secondary" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqKfRxiOyLzFXz69ffucVHNqtO2d9nLCE9QTdokUwnN5bqgLbE4TwntUm_19ow8CqIPiVc5b7UwxLwEcrOmxEnXSsb5AlS3eTMJ-9ETpGOTKrX-sJf7exHWmp02JDN7ct947V-Hk_NpLjH6Aoe3xZSCkOFmZvlK_PVJsfk-NfIuNzwk89cmWRCAN0k-2s-yhjVeBjb9J_Xw-WVdwYZUchxnI5okkCpia9PrI9BipqILXBCZKK_usmm1_50iFp8gX5BwQ-boKrnrCo" alt="Sarah" />
-                <span className="font-label-sm text-label-sm">Sarah</span>
-              </div>
-              <div className="flex flex-col items-center gap-xs min-w-[64px]">
-                <img className="w-12 h-12 rounded-full border-2 border-primary" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAi-WDMkS5SaeqABL4IyLNuYWhWtYQG5xEdRlyh3L286HiQ5YQEot0p6UFBP8Bw-pVTU9Mbc27CB77SsoiSpG-yrg-OZEHaPSe5vYGOjIK6D3PisHEFu8PS6eVGV3LcsU5UNodJfmWnvBY09nx3Sjo-C-3cBP_3M7K6QtAbNmFxeDbQwukduqIyeBOPWSyPuLz6IPsOSixS7qYapzq_27ikJqqQjjwq47Np0BKKb6VvuGinDFatuQLX4uC_8f_NmBhvyvOqvnrCTl0" alt="Mike" />
-                <span className="font-label-sm text-label-sm">Mike</span>
-              </div>
-              <button className="flex flex-col items-center gap-xs min-w-[64px]">
-                <div className="w-12 h-12 rounded-full border-2 border-dashed border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
-                  <span className="material-symbols-outlined">add</span>
-                </div>
-                <span className="font-label-sm text-label-sm">Invite</span>
-              </button>
+            <div className="flex gap-sm overflow-x-auto pb-xs">
+              {frequentFriends.length === 0 ? (
+                <p className="text-on-surface-variant font-body-sm py-2">Create groups to add friends.</p>
+              ) : (
+                frequentFriends.map((name, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-xs min-w-[64px]">
+                    <div className="w-12 h-12 rounded-full border-2 border-primary bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-md uppercase">
+                      {name.charAt(0)}
+                    </div>
+                    <span className="font-label-sm text-label-sm text-on-surface overflow-hidden text-ellipsis whitespace-nowrap max-w-[64px]">{name}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -187,21 +258,26 @@ function Dashboard({ user }) {
           <div className="bg-surface-container-lowest rounded-xl p-md ambient-shadow border border-outline-variant/30 flex-grow">
             <h3 className="font-headline-md text-headline-md text-on-surface mb-md">Active Groups</h3>
             <div className="space-y-sm">
-              <div className="flex items-center justify-between p-sm rounded-lg bg-surface-container-low hover:bg-surface-container hover:shadow-sm transition-all cursor-pointer">
-                <div className="flex items-center gap-sm">
-                  <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
+              {groups.length === 0 ? (
+                <p className="text-on-surface-variant font-body-sm py-4">No groups yet. Start your first circle!</p>
+              ) : (
+                groups.slice(0, 3).map((group, idx) => (
+                  <div key={group.id || idx} className="flex items-center justify-between p-sm rounded-lg bg-surface-container-low hover:bg-surface-container hover:shadow-sm transition-all cursor-pointer">
+                    <div className="flex items-center gap-sm">
+                      <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary font-bold">
+                        {group.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-label-md text-label-md">{group.name}</p>
+                        <p className="font-body-sm text-body-sm text-on-surface-variant">{group.members.length} members</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-body-xs font-semibold text-secondary px-xs py-[2px] bg-secondary-container/30 rounded uppercase">Active</span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-label-md text-label-md">The Apartment</p>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">3 members</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-label-sm text-label-sm text-primary">You owe</p>
-                  <p className="font-label-md text-label-md text-primary">$120.00</p>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
         </div>

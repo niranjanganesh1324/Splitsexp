@@ -16,7 +16,8 @@ import {
   where,
   serverTimestamp,
   updateDoc,
-  arrayUnion
+  arrayUnion,
+  deleteDoc
 } from "firebase/firestore";
 
 import { auth, db } from "./firebase";
@@ -270,4 +271,8 @@ export const addMemberToGroup = async (groupId, memberName) => {
   });
 
   return newMember;
+};
+
+export const deleteGroup = async (groupId) => {
+  await deleteDoc(doc(db, "groups", groupId));
 };
