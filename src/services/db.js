@@ -15,6 +15,8 @@ import {
   query,
   where,
   serverTimestamp,
+  updateDoc,
+  arrayUnion
 } from "firebase/firestore";
 
 import { auth, db } from "./firebase";
@@ -207,3 +209,65 @@ export const getBalances =
 
     return balances;
   };
+
+// GROUPS
+
+export const createGroup = async (groupName, creatorUser, memberNames = []) => {
+  const members = [
+    { id: creatorUser.id, name: creatorUser.name, email: creatorUser.email }
+  ];
+
+  memberNames.forEach(name => {
+    if (name.trim()) {
+      members.push({
+        id: 'friend-' + Math.random().toString(36).substring(2, 9),
+        name: name.trim()
+      });
+    }
+  });
+
+  const memberIds = [creatorUser.id];
+
+  const docRef = await addDoc(collection(db, "groups"), {
+    name: groupName,
+    members,
+    memberIds,
+    createdBy: creatorUser.id,
+    timestamp: serverTimestamp()
+  });
+
+  return {
+    id: docRef.id,
+    name: groupName,
+    members,
+    memberIds,
+    createdBy: creatorUser.id
+  };
+};
+
+export const getGroups = async (userId) => {
+  const q = query(
+    collection(db, "groups"),
+    where("memberIds", "array-contains", userId)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const addMemberToGroup = async (groupId, memberName) => {
+  const groupRef = doc(db, "groups", groupId);
+  const newMember = {
+    id: 'friend-' + Math.random().toString(36).substring(2, 9),
+    name: memberName.trim()
+  };
+
+  await updateDoc(groupRef, {
+    members: arrayUnion(newMember)
+  });
+
+  return newMember;
+};

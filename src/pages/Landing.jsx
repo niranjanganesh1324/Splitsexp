@@ -5,7 +5,9 @@ import { login, signup } from '../services/db';
 function Landing({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -14,31 +16,28 @@ function Landing({ onLoginSuccess }) {
     setError('');
     setLoading(true);
     try {
-      // Very basic logic: if user doesn't exist, we auto-signup for demo simplicity
-      // since the Stitch design only shows one form initially.
       let user;
-      try {
+      if (isLogin) {
         user = await login(email, password);
-      } catch (err) {
-        if (
-          err.code === "auth/invalid-credential" ||
-          err.code === "auth/user-not-found" ||
-          err.message?.includes("credential") ||
-          err.message?.includes("user-not-found")
-        ) {
-          // fallback to signup
-          user = await signup(email.split('@')[0], email, password);
-        } else {
-          throw err;
+      } else {
+        if (!name.trim()) {
+          throw new Error("Full name is required.");
         }
+        user = await signup(name.trim(), email, password);
       }
       onLoginSuccess(user);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      setError(err.message || "Authentication failed.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSignUpClick = () => {
+    setIsLogin(false);
+    setError('');
   };
 
   return (
@@ -57,7 +56,7 @@ function Landing({ onLoginSuccess }) {
             Stop the awkward money talk. Splitexp makes sharing expenses, managing group budgets, and settling debts effortless and transparent.
           </p>
           <div className="flex flex-col sm:flex-row gap-sm pt-md">
-            <button className="bg-primary text-on-primary px-lg py-md rounded-xl font-label-md shadow-lg hover:opacity-90 transition-all">Sign Up Free</button>
+            <button onClick={handleSignUpClick} className="bg-primary text-on-primary px-lg py-md rounded-xl font-label-md shadow-lg hover:opacity-90 transition-all">Sign Up Free</button>
             <button className="bg-surface-container-lowest border border-outline-variant text-primary px-lg py-md rounded-xl font-label-md hover:bg-surface-container transition-all">Watch Demo</button>
           </div>
         </div>
@@ -65,12 +64,29 @@ function Landing({ onLoginSuccess }) {
         {/* Login Form Card */}
         <div className="lg:col-span-5">
           <div className="bg-surface-container-lowest ambient-shadow p-lg rounded-xl border border-outline-variant border-opacity-30">
-            <h2 className="font-headline-md text-headline-md mb-xs text-on-surface">Welcome back</h2>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mb-lg">Manage your shared finances with ease.</p>
+            <h2 className="font-headline-md text-headline-md mb-xs text-on-surface">
+              {isLogin ? 'Welcome back' : 'Create account'}
+            </h2>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mb-lg">
+              {isLogin ? 'Manage your shared finances with ease.' : 'Get started with Splitexp for free today.'}
+            </p>
             
             {error && <div className="text-error mb-sm text-label-sm">{error}</div>}
 
             <form className="space-y-md" onSubmit={handleLogin}>
+              {!isLogin && (
+                <div className="space-y-xs">
+                  <label className="font-label-md text-label-md text-on-surface-variant">Full Name</label>
+                  <input 
+                    className="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" 
+                    placeholder="John Doe" 
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
               <div className="space-y-xs">
                 <label className="font-label-md text-label-md text-on-surface-variant">Email Address</label>
                 <input 
@@ -85,7 +101,7 @@ function Landing({ onLoginSuccess }) {
               <div className="space-y-xs">
                 <div className="flex justify-between items-center">
                   <label className="font-label-md text-label-md text-on-surface-variant">Password</label>
-                  <a className="text-label-sm text-primary hover:underline" href="#">Forgot?</a>
+                  {isLogin && <a className="text-label-sm text-primary hover:underline" href="#">Forgot?</a>}
                 </div>
                 <input 
                   className="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" 
@@ -104,10 +120,10 @@ function Landing({ onLoginSuccess }) {
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Signing In...</span>
+                    <span>{isLogin ? 'Signing In...' : 'Signing Up...'}</span>
                   </>
                 ) : (
-                  'Sign In'
+                  isLogin ? 'Sign In' : 'Sign Up'
                 )}
               </button>
             </form>
@@ -116,7 +132,7 @@ function Landing({ onLoginSuccess }) {
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline-variant border-opacity-30"></div></div>
               <span className="relative bg-surface-container-lowest px-sm text-label-sm text-on-surface-variant">OR CONTINUE WITH</span>
             </div>
-            <div className="grid grid-cols-2 gap-sm">
+            <div className="grid grid-cols-2 gap-sm mb-md">
               <button className="flex items-center justify-center gap-xs border border-outline-variant py-sm rounded-lg hover:bg-surface-container transition-all">
                 <img alt="Google" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqDujmPF0g6g6TTvxE6UVLO1qwmN2pjKXVry3sdhvknmK6V5U-jLIzFpGakJzPuCz-D4_ftq7PwxW3u719XO0ponw3kQxFctXY_eu76M3Hyz06ipCOcYS6TsTdJqi3YevmhEC7udmi1v6yRQbxmdkpqFaO4M2ACafmHVgFyIDr9My5nLlx_ro7WRTnH4PldXUHDR_JjEtfw05Z_sQ3nMCd7aIVPQj73z1Odpz_DeDE-DIbBQ7YSxZsEDuGVItwRLyDJzkC0EwL7UM"/>
                 <span className="font-label-sm">Google</span>
@@ -124,6 +140,15 @@ function Landing({ onLoginSuccess }) {
               <button className="flex items-center justify-center gap-xs border border-outline-variant py-sm rounded-lg hover:bg-surface-container transition-all">
                 <span className="material-symbols-outlined text-on-surface">ios</span>
                 <span className="font-label-sm">Apple</span>
+              </button>
+            </div>
+            
+            <div className="mt-md text-center pt-xs border-t border-outline-variant/20">
+              <button 
+                onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                className="text-label-sm text-primary hover:underline font-semibold"
+              >
+                {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
               </button>
             </div>
           </div>

@@ -1,24 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addExpense } from '../services/db';
+import { addExpense, getGroups } from '../services/db';
 
 function ScanSplit({ user }) {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      getGroups(user.id)
+        .then(data => {
+          setGroups(data);
+          if (data.length > 0) {
+            setSelectedGroup(data[0]); // default to first group
+          }
+        })
+        .catch(err => console.error("Error loading groups in ScanSplit:", err));
+    }
+  }, [user]);
+
+  const myShareAmount = selectedGroup 
+    ? (248.50 / selectedGroup.members.length) 
+    : 24.80;
 
   const handleConfirm = async () => {
     if (saving) return;
     setSaving(true);
+
+    let participants = [];
+    if (selectedGroup) {
+      const splitAmount = 248.50 / selectedGroup.members.length;
+      participants = selectedGroup.members.map(m => ({
+        id: m.id,
+        name: m.name,
+        amount: splitAmount
+      }));
+    } else {
+      participants = [
+        { id: user.id, name: user.name, amount: 24.80 },
+        { id: "mock-friend-1", name: "Sarah Ross", amount: 100.00 },
+        { id: "mock-friend-2", name: "Mike Jenkins", amount: 123.70 }
+      ];
+    }
+
     try {
       await addExpense({
         title: "Grocery Run",
         amount: 248.50,
         paidBy: user.id,
-        participants: [
-          { id: user.id, amount: 24.80 },
-          { id: "mock-friend-1", amount: 100.00 },
-          { id: "mock-friend-2", amount: 123.70 }
-        ]
+        group: selectedGroup ? selectedGroup.name : "No Group",
+        participants
       });
       navigate('/dashboard');
     } catch (err) {
@@ -55,16 +88,28 @@ function ScanSplit({ user }) {
           {/* Group Selector */}
           <div className="bg-surface-container-lowest rounded-xl p-md shadow-[0px_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant">
             <h2 className="font-label-md text-label-md text-on-surface-variant mb-sm">Assign to Group</h2>
-            <div className="flex items-center gap-sm p-sm border border-outline-variant rounded-lg hover:border-primary cursor-pointer transition-colors">
-              <div className="w-10 h-10 bg-secondary-container text-on-secondary-container rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined">groups</span>
+            {groups.length > 0 ? (
+              <div className="relative">
+                <select 
+                  className="w-full p-sm border border-outline-variant rounded-lg bg-surface-container-lowest text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none font-body-md text-body-md"
+                  value={selectedGroup ? selectedGroup.id : ""}
+                  onChange={e => {
+                    const g = groups.find(x => x.id === e.target.value);
+                    setSelectedGroup(g || null);
+                  }}
+                >
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} ({g.members.length} members)</option>
+                  ))}
+                  <option value="">No Group (Custom Split)</option>
+                </select>
+                <span className="material-symbols-outlined text-outline absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
               </div>
-              <div className="flex-grow">
-                <p className="font-label-md text-label-md text-on-surface">Weekend Cabin Trip</p>
-                <p className="font-body-sm text-body-sm text-outline">6 members</p>
+            ) : (
+              <div className="p-sm border border-outline-variant border-dashed rounded-lg text-center text-body-sm text-outline">
+                No groups created yet. Create a group first under Group Management!
               </div>
-              <span className="material-symbols-outlined text-outline">expand_more</span>
-            </div>
+            )}
           </div>
         </section>
 
@@ -118,7 +163,7 @@ function ScanSplit({ user }) {
             <div className="bg-surface-container-high p-md">
               <div className="flex justify-between items-center mb-sm">
                 <span className="font-body-md text-body-md text-on-surface-variant">Your Share ({user.name})</span>
-                <span className="font-headline-md text-headline-md text-on-surface">$24.80</span>
+                <span className="font-headline-md text-headline-md text-on-surface">${myShareAmount.toFixed(2)}</span>
               </div>
               <button onClick={handleConfirm} disabled={saving} className="w-full py-md bg-primary text-on-primary rounded-xl font-label-md text-label-md shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-base disabled:opacity-50">
                 {saving ? 'Creating Split...' : 'Confirm and Create Split'}

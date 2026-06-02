@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { addExpense } from '../services/db';
+import React, { useState, useEffect } from 'react';
+import { addExpense, getGroups } from '../services/db';
 
 function AddExpense({ user, onComplete, initialData = null }) {
   const [description, setDescription] = useState(initialData?.description || '');
@@ -7,6 +7,32 @@ function AddExpense({ user, onComplete, initialData = null }) {
   // For simplicity in prototype: comma-separated list of friend names
   const [friendsStr, setFriendsStr] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      getGroups(user.id)
+        .then(data => setGroups(data))
+        .catch(err => console.error("Error loading groups in AddExpense:", err));
+    }
+  }, [user]);
+
+  const handleGroupSelect = (groupId) => {
+    setSelectedGroupId(groupId);
+    if (!groupId) {
+      setFriendsStr('');
+      return;
+    }
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      const others = group.members
+        .filter(m => m.id !== user.id)
+        .map(m => m.name)
+        .join(', ');
+      setFriendsStr(others);
+    }
+  };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,6 +90,22 @@ function AddExpense({ user, onComplete, initialData = null }) {
             required
           />
         </div>
+        {groups.length > 0 && (
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>Select Group to Split With</label>
+            <select 
+              className="form-control" 
+              value={selectedGroupId}
+              onChange={e => handleGroupSelect(e.target.value)}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--bg-panel)', color: 'var(--text-main)', outline: 'none' }}
+            >
+              <option value="">-- Or type individual names below --</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="form-group">
           <label>Split With (comma-separated names)</label>
           <input 
