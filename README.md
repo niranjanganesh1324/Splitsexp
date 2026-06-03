@@ -14,13 +14,13 @@
 
 | Feature | Description |
 |---|---|
-| 🔐 **Authentication** | Email/password sign-up and login powered by Firebase Auth. Persistent sessions across page reloads. |
-| 📊 **Dynamic Dashboard** | Real-time balance overview (You are owed / You owe), monthly spending totals, 7-day spending bar chart, and active group summaries — all calculated live from Firestore. |
-| 👥 **Group Management** | Create expense-sharing circles with friends. Add members to existing groups. Delete groups via a branded custom confirmation modal. |
-| 🧾 **Scan & Split** | Upload a receipt image and distribute the bill across any group with a single click. |
-| 📜 **Expense History** | Full table-view history of all past transactions with per-user balance status (paid / owed). |
-| 💸 **Settle Balances** | Clear view of outstanding debts per friend. Shows "All settled up!" automatically when no debts remain. |
-| 🛡️ **Data Isolation** | Firestore security rules ensure each user's data is completely private — no cross-user data leakage. |
+|  **Authentication** | Email/password sign-up and login powered by Firebase Auth. Persistent sessions across page reloads. |
+|  **Dynamic Dashboard** | Real-time balance overview (You are owed / You owe), monthly spending totals, 7-day spending bar chart, and active group summaries — all calculated live from Firestore. |
+|  **Group Management** | Create expense-sharing circles with friends. Add members to existing groups. Delete groups via a branded custom confirmation modal. |
+|  **Scan & Split** | Upload a receipt image and distribute the bill across any group with a single click. |
+|  **Expense History** | Full table-view history of all past transactions with per-user balance status (paid / owed). |
+|  **Settle Balances** | Clear view of outstanding debts per friend. Shows "All settled up!" automatically when no debts remain. |
+|  **Data Isolation** | Firestore security rules ensure each user's data is completely private — no cross-user data leakage. |
 
 ---
 
@@ -73,7 +73,7 @@ splitsexp/
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -112,7 +112,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-> ⚠️ **Never commit your `.env` file.** It is already listed in `.gitignore`.
+>  **Never commit your `.env` file.** It is already listed in `.gitignore`.
 
 ### 4. Deploy Firestore security rules
 
@@ -130,7 +130,7 @@ The app will be available at `http://localhost:5173`.
 
 ---
 
-## 🔥 Firebase Setup
+##  Firebase Setup
 
 ### Firestore Collections
 
@@ -152,7 +152,7 @@ The included `firestore.rules` ensures:
 
 ---
 
-## 📦 Available Scripts
+##  Available Scripts
 
 | Script | Description |
 |---|---|
@@ -163,7 +163,7 @@ The included `firestore.rules` ensures:
 
 ---
 
-## 🎨 Design System
+##  Design System
 
 Splitsexp uses a **Material Design 3**-inspired token system built directly into Tailwind CSS. All colors, spacing, and typography are expressed as semantic tokens:
 
@@ -174,7 +174,7 @@ Splitsexp uses a **Material Design 3**-inspired token system built directly into
 
 ---
 
-## 🗺️ App Routes
+##  App Routes
 
 | Route | Page | Auth Required |
 |---|---|---|
@@ -187,7 +187,7 @@ Splitsexp uses a **Material Design 3**-inspired token system built directly into
 
 ---
 
-## 🛠️ Key Architectural Decisions
+##  Key Architectural Decisions
 
 - **No Redux / Context store** — User state is lifted to `App.jsx` and passed down as props. Simple and predictable.
 - **Firebase auth persistence** — `subscribeToAuthChanges` uses Firebase's `onAuthStateChanged` so the session survives page refreshes automatically.
@@ -197,7 +197,7 @@ Splitsexp uses a **Material Design 3**-inspired token system built directly into
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create your feature branch: `git checkout -b feature/your-feature-name`
@@ -209,12 +209,12 @@ Please ensure `npm run build` passes before submitting a PR.
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the **MIT License**.
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ using React, Firebase & Tailwind CSS</sub>
+  <sub>Built using React, Firebase & Tailwind CSS</sub>
 </div>
