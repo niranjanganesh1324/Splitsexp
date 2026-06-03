@@ -10,7 +10,7 @@
 
 ---
 
-## ✨ Features
+##  Features
 
 | Feature | Description |
 |---|---|
@@ -24,7 +24,7 @@
 
 ---
 
-## 🖥️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -39,7 +39,7 @@
 
 ---
 
-## 🗂️ Project Structure
+##  Project Structure
 
 ```
 splitsexp/
