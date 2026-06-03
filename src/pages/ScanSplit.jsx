@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { addExpense, getGroups } from '../services/db';
 
 function ScanSplit({ user }) {
@@ -62,12 +62,26 @@ function ScanSplit({ user }) {
 
   return (
     <main className="flex-grow w-full max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg">
+      <div className="mb-md flex flex-col md:flex-row md:items-center justify-between gap-sm">
+        <div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface">Scan Receipt</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant">Upload a receipt image to automatically detect and split items.</p>
+        </div>
+        <Link 
+          to="/manual" 
+          className="flex items-center gap-xs text-primary font-label-md hover:underline"
+        >
+          <span className="material-symbols-outlined text-[20px]">edit_note</span>
+          Or enter manually
+        </Link>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-md items-start">
         {/* Left: Bill Scanning/Upload Column */}
         <section className="lg:col-span-5 space-y-md">
           <div className="bg-surface-container-lowest rounded-xl p-md shadow-[0px_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant">
             <div className="flex items-center justify-between mb-md">
-              <h1 className="font-headline-md text-headline-md text-on-surface">Scan Receipt</h1>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Receipt Upload</h2>
               <span className="text-primary material-symbols-outlined text-[32px]">camera_enhance</span>
             </div>
             <div className="relative group aspect-[3/4] bg-surface-container-low rounded-lg overflow-hidden border-2 border-dashed border-outline-variant hover:border-primary transition-colors flex flex-col items-center justify-center cursor-pointer">

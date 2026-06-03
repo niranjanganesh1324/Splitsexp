@@ -123,14 +123,18 @@ function Dashboard({ user }) {
           <h1 className="font-headline-lg text-headline-lg text-on-surface">Good Morning, {user.name.split(' ')[0]}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">Here's what's happening with your expenses today.</p>
         </div>
-        <div className="flex gap-sm">
-          <Link to="/scan" className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-primary text-on-primary px-md py-sm rounded-xl font-label-md ambient-shadow hover:opacity-90 transition-all">
-            <span className="material-symbols-outlined">add</span>
-            Add Expense
+        <div className="flex flex-wrap gap-sm w-full md:w-auto">
+          <Link to="/manual" className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-primary text-on-primary px-md py-sm rounded-xl font-label-md ambient-shadow hover:opacity-90 transition-all">
+            <span className="material-symbols-outlined">edit_note</span>
+            Manual Entry
+          </Link>
+          <Link to="/scan" className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-surface-container-lowest text-primary border border-outline-variant px-md py-sm rounded-xl font-label-md ambient-shadow hover:bg-primary-fixed transition-all">
+            <span className="material-symbols-outlined">camera_enhance</span>
+            Scan Bill
           </Link>
           <button 
             onClick={handleCreateGroupClick} 
-            className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-surface-container-lowest text-primary border border-outline-variant px-md py-sm rounded-xl font-label-md ambient-shadow hover:bg-primary-fixed transition-all"
+            className="flex-1 md:flex-none flex items-center justify-center gap-xs bg-surface-container-lowest text-outline border border-outline-variant px-md py-sm rounded-xl font-label-md ambient-shadow hover:bg-surface-container transition-all"
           >
             <span className="material-symbols-outlined">group_add</span>
             Create Group

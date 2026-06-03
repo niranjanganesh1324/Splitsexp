@@ -19,6 +19,7 @@ function Header({ user, onLogout }) {
         </div>
         {user ? (
           <>
+            <Link to="/manual" className="px-md py-sm border border-outline-variant text-on-surface rounded-lg font-label-md hover:bg-surface-container-high transition-colors whitespace-nowrap">Manual Entry</Link>
             <Link to="/scan" className="bg-primary text-on-primary px-md py-sm rounded-lg font-label-md hover:opacity-80 transition-opacity whitespace-nowrap">Scan Bill</Link>
             <div className="flex items-center gap-xs">
               <span className="material-symbols-outlined text-on-surface-variant cursor-pointer p-xs hover:bg-surface-container rounded-full" title="Logout" onClick={onLogout}>logout</span>

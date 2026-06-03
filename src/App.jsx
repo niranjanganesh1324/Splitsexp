@@ -6,6 +6,7 @@ import Footer from './components/Footer'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import ScanSplit from './pages/ScanSplit'
+import ManualExpense from './pages/ManualExpense'
 import History from './pages/History'
 import GroupManagement from './pages/GroupManagement'
 import SettleBalances from './pages/SettleBalances'
@@ -58,6 +59,9 @@ function App() {
           } />
           <Route path="/scan" element={
             currentUser ? <ScanSplit user={currentUser} /> : <Navigate to="/" />
+          } />
+          <Route path="/manual" element={
+            currentUser ? <ManualExpense user={currentUser} /> : <Navigate to="/" />
           } />
           <Route path="/history" element={
             currentUser ? <History user={currentUser} /> : <Navigate to="/" />
