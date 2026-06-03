@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, signup } from '../services/db';
+import { login, signup, loginWithGoogle } from '../services/db';
 
 function Landing({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -30,6 +30,26 @@ function Landing({ onLoginSuccess }) {
     } catch (err) {
       console.error(err);
       setError(err.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const user = await loginWithGoogle();
+      onLoginSuccess(user);
+      navigate('/dashboard');
+    } catch (err) {
+      console.error("Google auth error:", err);
+      // Clean up common cancel error to make it user friendly
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError("Sign-in popup was closed before completing.");
+      } else {
+        setError(err.message || "Google Authentication failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -133,7 +153,12 @@ function Landing({ onLoginSuccess }) {
               <span className="relative bg-surface-container-lowest px-sm text-label-sm text-on-surface-variant">OR CONTINUE WITH</span>
             </div>
             <div className="grid grid-cols-2 gap-sm mb-md">
-              <button className="flex items-center justify-center gap-xs border border-outline-variant py-sm rounded-lg hover:bg-surface-container transition-all">
+              <button 
+                type="button"
+                onClick={handleGoogleLogin} 
+                disabled={loading}
+                className="flex items-center justify-center gap-xs border border-outline-variant py-sm rounded-lg hover:bg-surface-container transition-all disabled:opacity-50"
+              >
                 <img alt="Google" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqDujmPF0g6g6TTvxE6UVLO1qwmN2pjKXVry3sdhvknmK6V5U-jLIzFpGakJzPuCz-D4_ftq7PwxW3u719XO0ponw3kQxFctXY_eu76M3Hyz06ipCOcYS6TsTdJqi3YevmhEC7udmi1v6yRQbxmdkpqFaO4M2ACafmHVgFyIDr9My5nLlx_ro7WRTnH4PldXUHDR_JjEtfw05Z_sQ3nMCd7aIVPQj73z1Odpz_DeDE-DIbBQ7YSxZsEDuGVItwRLyDJzkC0EwL7UM"/>
                 <span className="font-label-sm">Google</span>
               </button>

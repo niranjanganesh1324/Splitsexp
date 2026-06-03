@@ -4,6 +4,8 @@ import {
   signOut,
   updateProfile,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 
 import {
@@ -104,6 +106,28 @@ export const subscribeToAuthChanges = (
       });
     }
   );
+};
+
+export const loginWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  const cred = await signInWithPopup(auth, provider);
+
+  await setDoc(
+    doc(db, "users", cred.user.uid),
+    {
+      uid: cred.user.uid,
+      name: cred.user.displayName || "User",
+      email: cred.user.email,
+      createdAt: Date.now(),
+    },
+    { merge: true }
+  );
+
+  return {
+    id: cred.user.uid,
+    name: cred.user.displayName || "User",
+    email: cred.user.email,
+  };
 };
 
 // EXPENSES
