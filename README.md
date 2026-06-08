@@ -14,10 +14,12 @@
 
 | Feature | Description |
 |---|---|
-|  **Authentication** | Email/password sign-up and login powered by Firebase Auth. Persistent sessions across page reloads. |
+|  **Authentication** | Email/password credentials and **Google Sign-In** powered by Firebase Auth. Persistent sessions and automatic Firestore profile synchronization. |
 |  **Dynamic Dashboard** | Real-time balance overview (You are owed / You owe), monthly spending totals, 7-day spending bar chart, and active group summaries — all calculated live from Firestore. |
 |  **Group Management** | Create expense-sharing circles with friends. Add members to existing groups. Delete groups via a branded custom confirmation modal. |
-|  **Scan & Split** | Upload a receipt image and distribute the bill across any group with a single click. |
+|  **Manual Expense Entry** | Manually input title and amount, select group circle, and split cost. Supports Equal, Exact, and Percentage shares. |
+|  **Scan Receipt** | Upload a receipt image, assign to group, and split the bill. Supports Equal, Exact, and Percentage shares. |
+|  **Flexible Splitting** | Toggle between **Equally** (even split), **Exact** (custom dollar shares), or **Percent** (custom percentage shares) with real-time validation math and auto-population convenience. |
 |  **Expense History** | Full table-view history of all past transactions with per-user balance status (paid / owed). |
 |  **Settle Balances** | Clear view of outstanding debts per friend. Shows "All settled up!" automatically when no debts remain. |
 |  **Data Isolation** | Firestore security rules ensure each user's data is completely private — no cross-user data leakage. |
@@ -34,7 +36,7 @@
 | **Icons** | Google Material Symbols (Outlined) |
 | **Typography** | Inter via Google Fonts |
 | **Backend / DB** | Firebase Firestore (NoSQL) |
-| **Authentication** | Firebase Auth (Email/Password) |
+| **Authentication** | Firebase Auth (Email/Password & Google Sign-In) |
 | **Build Tool** | Vite |
 
 ---
@@ -56,6 +58,7 @@ splitsexp/
 │   │   ├── GroupManagement.jsx  # Create, view, and delete groups
 │   │   ├── History.jsx      # Full expense transaction history
 │   │   ├── Landing.jsx      # Marketing page + auth forms
+│   │   ├── ManualExpense.jsx # Manual expense entry and split config
 │   │   ├── ScanSplit.jsx    # Receipt scanning & group assignment
 │   │   └── SettleBalances.jsx   # Outstanding debts overview
 │   ├── services/
@@ -180,6 +183,7 @@ Splitsexp uses a **Material Design 3**-inspired token system built directly into
 |---|---|---|
 | `/` | Landing / Login / Sign Up | No |
 | `/dashboard` | Main dashboard with balance overview | Yes |
+| `/manual` | Manually enter expense details & configure split | Yes |
 | `/scan` | Upload & split a receipt | Yes |
 | `/history` | Full expense transaction log | Yes |
 | `/groups` | Manage group circles | Yes |
