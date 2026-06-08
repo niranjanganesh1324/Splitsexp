@@ -19,6 +19,9 @@ function ScanSplit({ user }) {
   const [ocrStatus, setOcrStatus] = useState("");
   const [ocrError, setOcrError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
 
   // Camera Refs
   const videoRef = useRef(null);
@@ -219,6 +222,26 @@ function ScanSplit({ user }) {
     setOcrError(null);
     setScannedItems([]);
     setTotalAmount(0.00);
+  };
+
+  const handleAddItem = (name, price) => {
+    const parsedPrice = parseFloat(price) || 0;
+    const newItems = [...scannedItems, { name, price: parsedPrice }];
+    setScannedItems(newItems);
+    
+    // Recalculate total amount as sum of all items
+    const newTotal = newItems.reduce((sum, item) => sum + item.price, 0);
+    setTotalAmount(parseFloat(newTotal.toFixed(2)));
+    setIsAddingItem(false);
+  };
+
+  const handleDeleteItem = (indexToDelete) => {
+    const newItems = scannedItems.filter((_, idx) => idx !== indexToDelete);
+    setScannedItems(newItems);
+    
+    // Recalculate total amount as sum of all items
+    const newTotal = newItems.reduce((sum, item) => sum + item.price, 0);
+    setTotalAmount(parseFloat(newTotal.toFixed(2)));
   };
 
   // Image Preprocessing Helper to convert to high-contrast grayscale
@@ -727,13 +750,20 @@ function ScanSplit({ user }) {
             <div className="divide-y divide-outline-variant max-h-[300px] overflow-y-auto">
               {scannedItems.length > 0 ? (
                 scannedItems.map((item, idx) => (
-                  <div key={idx} className="p-md flex items-start gap-md hover:bg-surface-container-low transition-colors">
-                    <div className="flex-grow">
-                      <div className="flex justify-between">
+                  <div key={idx} className="p-md flex items-center justify-between hover:bg-surface-container-low transition-colors">
+                    <div className="flex-grow mr-sm">
+                      <div className="flex justify-between items-center">
                         <h3 className="font-label-md text-label-md text-on-surface">{item.name}</h3>
                         <span className="font-label-md text-label-md text-on-surface">${item.price.toFixed(2)}</span>
                       </div>
                     </div>
+                    <button 
+                      onClick={() => handleDeleteItem(idx)}
+                      className="text-error opacity-60 hover:opacity-100 transition-opacity ml-xs shrink-0 flex items-center justify-center bg-transparent border-none cursor-pointer"
+                      title="Delete item"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
                   </div>
                 ))
               ) : (
@@ -745,7 +775,61 @@ function ScanSplit({ user }) {
                   )}
                 </div>
               )}
+
+              {/* Add Item form inside list */}
+              {isAddingItem && (
+                <div className="p-sm bg-surface-container-low flex items-center gap-xs border-t border-outline-variant">
+                  <input 
+                    type="text" 
+                    placeholder="Item name"
+                    className="flex-grow p-xs border border-outline-variant rounded bg-surface-container-lowest text-on-surface text-body-sm outline-none focus:border-primary"
+                    value={newItemName}
+                    onChange={e => setNewItemName(e.target.value)}
+                  />
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    placeholder="0.00"
+                    className="w-20 p-xs border border-outline-variant rounded bg-surface-container-lowest text-on-surface text-body-sm text-right outline-none focus:border-primary"
+                    value={newItemPrice}
+                    onChange={e => setNewItemPrice(e.target.value)}
+                  />
+                  <button 
+                    onClick={() => {
+                      if (newItemName.trim()) {
+                        handleAddItem(newItemName.trim(), newItemPrice);
+                        setNewItemName("");
+                        setNewItemPrice("");
+                      }
+                    }}
+                    className="p-xs bg-primary text-on-primary rounded hover:opacity-90 transition-opacity flex items-center justify-center shrink-0 border-none cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px] text-white">check</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsAddingItem(false);
+                      setNewItemName("");
+                      setNewItemPrice("");
+                    }}
+                    className="p-xs border border-outline-variant text-on-surface rounded hover:bg-surface-container-high transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Add Item Button */}
+            {!isAddingItem && (
+              <button 
+                onClick={() => setIsAddingItem(true)} 
+                className="w-full py-sm text-primary font-label-sm hover:bg-surface-container-high transition-colors flex items-center justify-center gap-xs border-t border-outline-variant bg-transparent border-none cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Add Item
+              </button>
+            )}
 
             {/* Split Mode Selector (only if group selected) */}
             {selectedGroup && (
