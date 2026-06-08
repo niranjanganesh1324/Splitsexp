@@ -221,25 +221,113 @@ function ScanSplit({ user }) {
     setTotalAmount(0.00);
   };
 
+  // Image Preprocessing Helper to convert to high-contrast grayscale
+  const preprocessImage = (src) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Scale down image if it's too large to improve performance and quality
+        const maxDim = 1200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        
+        try {
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const data = imgData.data;
+          
+          // Apply Grayscale and Adaptive soft binarization
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            // Grayscale (Luminance)
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            
+            // Contrast thresholding: makes darks darker and lights lighter
+            let v = gray;
+            if (gray < 115) {
+              v = 0;
+            } else if (gray > 145) {
+              v = 255;
+            } else {
+              v = ((gray - 115) / 30) * 255;
+            }
+            
+            data[i] = v;     // R
+            data[i + 1] = v; // G
+            data[i + 2] = v; // B
+          }
+          
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.95));
+        } catch (e) {
+          console.error("Canvas pixel data access error:", e);
+          resolve(src); // Fallback to original image if drawing fails
+        }
+      };
+      img.onerror = () => {
+        resolve(src);
+      };
+      img.src = src;
+    });
+  };
+
   // OCR Processing and Extraction
   const extractItemsAndTotal = (text) => {
     const lines = text.split('\n');
     const items = [];
     let detectedTotal = 0;
     
-    // Regex to match a price-like number at the end of a line
-    const priceRegex = /[:\-\$]?\s*([0-9]+[\.,][0-9]{2})\s*$/;
+    // Total, subtotal, and tax keywords
     const totalKeywords = /total|grand\s*total|amount\s*due|net\s*total|balance|sum/i;
     const subtotalKeywords = /subtotal|sub\s*total/i;
     const taxKeywords = /tax|gst|vat/i;
 
-    for (let line of lines) {
-      line = line.trim();
+    for (let rawLine of lines) {
+      // Clean up OCR line:
+      // 1. Normalize spaces
+      // 2. Fix spaces around dots/commas (e.g., "12 . 50" -> "12.50")
+      // 3. Fix missing decimal point where space is present (e.g., "12 50" at end -> "12.50")
+      let line = rawLine.trim()
+        .replace(/\s+/g, ' ')
+        .replace(/(\d+)\s*[\.,]\s*(\d{2})/g, '$1.$2')
+        .replace(/(\d+)\s+(\d{2})\s*$/g, '$1.$2');
+      
       if (!line) continue;
       
+      // Match price-like string at the end of the line (e.g., 18.40, $18.40, 18.4O)
+      // Allow common letter substitutions in decimal portion like O, o, S, s, I, i, l
+      const priceRegex = /[:\-\$]?\s*([0-9]+[\.,][0-9SOsoIil]{2})\s*$/;
       const match = line.match(priceRegex);
+      
       if (match) {
-        const priceVal = parseFloat(match[1].replace(',', '.'));
+        // Correct OCR characters back to numbers in the price part
+        let priceStr = match[1]
+          .replace(/O|o/g, '0')
+          .replace(/S|s/g, '5')
+          .replace(/I|i|l/g, '1')
+          .replace(',', '.');
+          
+        const priceVal = parseFloat(priceStr);
+        if (isNaN(priceVal)) continue;
+
         const namePart = line.replace(match[0], '').replace(/^[^\w]+/, '').trim();
         
         if (totalKeywords.test(line)) {
@@ -275,12 +363,17 @@ function ScanSplit({ user }) {
   const handleScanReceipt = async () => {
     if (!imageSrc) return;
     setOcrProgress(1);
-    setOcrStatus("Initializing OCR engine...");
+    setOcrStatus("Preprocessing image for accuracy...");
     setOcrError(null);
 
     try {
+      // Step 1: Preprocess the image
+      const processedSrc = await preprocessImage(imageSrc);
+      
+      // Step 2: Run Tesseract on processed high-contrast image
+      setOcrStatus("Initializing OCR engine...");
       const result = await Tesseract.recognize(
-        imageSrc,
+        processedSrc,
         'eng',
         {
           logger: m => {
@@ -290,6 +383,10 @@ function ScanSplit({ user }) {
             } else {
               setOcrStatus(m.status.charAt(0).toUpperCase() + m.status.slice(1) + "...");
             }
+          },
+          parameters: {
+            tessedit_pageseg_mode: '4', // Assume a single column of text (best for columns layout like bills)
+            tessedit_char_whitelist: '0123456789.,$+-/ \n\rABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#()&[]:%'
           }
         }
       );
