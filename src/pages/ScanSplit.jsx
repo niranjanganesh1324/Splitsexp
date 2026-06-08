@@ -226,11 +226,11 @@ function ScanSplit({ user }) {
 
   const handleAddItem = (name, price) => {
     const parsedPrice = parseFloat(price) || 0;
-    const newItems = [...scannedItems, { name, price: parsedPrice }];
+    const newItems = [...scannedItems, { name, price: parsedPrice.toFixed(2) }];
     setScannedItems(newItems);
     
     // Recalculate total amount as sum of all items
-    const newTotal = newItems.reduce((sum, item) => sum + item.price, 0);
+    const newTotal = newItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
     setTotalAmount(parseFloat(newTotal.toFixed(2)));
     setIsAddingItem(false);
   };
@@ -240,8 +240,31 @@ function ScanSplit({ user }) {
     setScannedItems(newItems);
     
     // Recalculate total amount as sum of all items
-    const newTotal = newItems.reduce((sum, item) => sum + item.price, 0);
+    const newTotal = newItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
     setTotalAmount(parseFloat(newTotal.toFixed(2)));
+  };
+
+  const handleUpdateItemName = (index, newName) => {
+    const newItems = [...scannedItems];
+    newItems[index].name = newName;
+    setScannedItems(newItems);
+  };
+
+  const handleUpdateItemPrice = (index, newPrice) => {
+    const newItems = [...scannedItems];
+    newItems[index].price = newPrice;
+    setScannedItems(newItems);
+    
+    // Recalculate total amount as sum of all items
+    const newTotal = newItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+    setTotalAmount(parseFloat(newTotal.toFixed(2)));
+  };
+
+  const handleBlurPrice = (index, value) => {
+    const parsed = parseFloat(value) || 0;
+    const newItems = [...scannedItems];
+    newItems[index].price = parsed.toFixed(2);
+    setScannedItems(newItems);
   };
 
   // Image Preprocessing Helper to convert to high-contrast grayscale
@@ -362,7 +385,7 @@ function ScanSplit({ user }) {
         } else if (namePart.length > 2) {
           items.push({
             name: namePart,
-            price: priceVal
+            price: priceStr
           });
         }
       }
@@ -370,10 +393,10 @@ function ScanSplit({ user }) {
     
     // Fallback: use highest price if no total keyword matches
     if (detectedTotal === 0) {
-      const prices = items.map(i => i.price);
+      const prices = items.map(i => parseFloat(i.price) || 0);
       if (prices.length > 0) {
         detectedTotal = Math.max(...prices);
-        const maxIndex = items.findIndex(i => i.price === detectedTotal);
+        const maxIndex = items.findIndex(i => (parseFloat(i.price) || 0) === detectedTotal);
         if (maxIndex !== -1) {
           items.splice(maxIndex, 1);
         }
@@ -750,20 +773,32 @@ function ScanSplit({ user }) {
             <div className="divide-y divide-outline-variant max-h-[300px] overflow-y-auto">
               {scannedItems.length > 0 ? (
                 scannedItems.map((item, idx) => (
-                  <div key={idx} className="p-md flex items-center justify-between hover:bg-surface-container-low transition-colors">
-                    <div className="flex-grow mr-sm">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-label-md text-label-md text-on-surface">{item.name}</h3>
-                        <span className="font-label-md text-label-md text-on-surface">${item.price.toFixed(2)}</span>
-                      </div>
+                  <div key={idx} className="p-sm flex items-center justify-between hover:bg-surface-container-low transition-colors gap-xs">
+                    <input 
+                      type="text"
+                      className="flex-grow p-xs font-label-md text-label-md text-on-surface bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary focus:bg-surface-container-lowest outline-none rounded transition-all font-semibold"
+                      value={item.name}
+                      onChange={e => handleUpdateItemName(idx, e.target.value)}
+                      placeholder="Item name"
+                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-on-surface-variant font-label-sm font-semibold">$</span>
+                      <input 
+                        type="text"
+                        className="w-20 p-xs font-label-md text-label-md text-on-surface bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary focus:bg-surface-container-lowest outline-none rounded text-right transition-all font-semibold"
+                        value={item.price}
+                        onChange={e => handleUpdateItemPrice(idx, e.target.value)}
+                        onBlur={e => handleBlurPrice(idx, e.target.value)}
+                        placeholder="0.00"
+                      />
+                      <button 
+                        onClick={() => handleDeleteItem(idx)}
+                        className="text-error opacity-60 hover:opacity-100 transition-opacity flex items-center justify-center bg-transparent border-none cursor-pointer p-xs"
+                        title="Delete item"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => handleDeleteItem(idx)}
-                      className="text-error opacity-60 hover:opacity-100 transition-opacity ml-xs shrink-0 flex items-center justify-center bg-transparent border-none cursor-pointer"
-                      title="Delete item"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
                   </div>
                 ))
               ) : (
