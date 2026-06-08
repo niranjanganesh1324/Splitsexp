@@ -21,22 +21,106 @@ function ScanSplit({ user }) {
     }
   }, [user]);
 
-  const myShareAmount = selectedGroup 
-    ? (248.50 / selectedGroup.members.length) 
-    : 24.80;
+  // Custom Split States
+  const [splitMode, setSplitMode] = useState('equal'); // 'equal' | 'exact' | 'percentage'
+  const [exactAmounts, setExactAmounts] = useState({}); // { [memberId]: string }
+  const [percentages, setPercentages] = useState({}); // { [memberId]: string }
+
+  // Reset custom splits when group changes
+  useEffect(() => {
+    setSplitMode('equal');
+    setExactAmounts({});
+    setPercentages({});
+  }, [selectedGroup]);
+
+  const totalAmount = 248.50;
+  const numMembers = selectedGroup ? selectedGroup.members.length : 0;
+  const splitAmount = numMembers > 0 ? totalAmount / numMembers : 0;
+
+  // Validation logic
+  const sumExact = Object.values(exactAmounts).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+  const diffExact = Math.abs(sumExact - totalAmount);
+  const isExactValid = diffExact < 0.01;
+
+  const sumPercent = Object.values(percentages).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+  const diffPercent = Math.abs(sumPercent - 100);
+  const isPercentValid = diffPercent < 0.2; // tolerance for 33.3% * 3 = 99.9%
+
+  const handleSwitchSplitMode = (mode) => {
+    setSplitMode(mode);
+    if (!selectedGroup) return;
+
+    if (mode === 'exact') {
+      const baseShare = totalAmount / selectedGroup.members.length;
+      const initialAmounts = {};
+      selectedGroup.members.forEach(m => {
+        initialAmounts[m.id] = baseShare.toFixed(2);
+      });
+      setExactAmounts(initialAmounts);
+    } else if (mode === 'percentage') {
+      const basePercent = 100 / selectedGroup.members.length;
+      const initialPercents = {};
+      selectedGroup.members.forEach(m => {
+        initialPercents[m.id] = basePercent.toFixed(1);
+      });
+      setPercentages(initialPercents);
+    }
+  };
+
+  const getUserShare = () => {
+    if (!selectedGroup) return 24.80; // mock default if no group
+    if (splitMode === 'equal') {
+      return splitAmount;
+    }
+    if (splitMode === 'exact') {
+      return parseFloat(exactAmounts[user.id]) || 0;
+    }
+    if (splitMode === 'percentage') {
+      const pct = parseFloat(percentages[user.id]) || 0;
+      return totalAmount * (pct / 100);
+    }
+    return 0;
+  };
+
+  const myShareAmount = getUserShare();
 
   const handleConfirm = async () => {
     if (saving) return;
+
+    if (selectedGroup) {
+      if (splitMode === 'exact' && !isExactValid) {
+        console.error("The sum of individual amounts does not match the total amount.");
+        return;
+      }
+      if (splitMode === 'percentage' && !isPercentValid) {
+        console.error("The percentages must sum up to 100%.");
+        return;
+      }
+    }
+
     setSaving(true);
 
     let participants = [];
     if (selectedGroup) {
-      const splitAmount = 248.50 / selectedGroup.members.length;
-      participants = selectedGroup.members.map(m => ({
-        id: m.id,
-        name: m.name,
-        amount: splitAmount
-      }));
+      if (splitMode === 'equal') {
+        participants = selectedGroup.members.map(m => ({
+          id: m.id,
+          name: m.name,
+          amount: splitAmount
+        }));
+      } else if (splitMode === 'exact') {
+        participants = selectedGroup.members.map(m => ({
+          id: m.id,
+          name: m.name,
+          amount: parseFloat(exactAmounts[m.id]) || 0
+        }));
+      } else if (splitMode === 'percentage') {
+        participants = selectedGroup.members.map(m => ({
+          id: m.id,
+          name: m.name,
+          amount: totalAmount * ((parseFloat(percentages[m.id]) || 0) / 100)
+        }));
+      }
     } else {
       participants = [
         { id: user.id, name: user.name, amount: 24.80 },
@@ -48,7 +132,7 @@ function ScanSplit({ user }) {
     try {
       await addExpense({
         title: "Grocery Run",
-        amount: 248.50,
+        amount: totalAmount,
         paidBy: user.id,
         group: selectedGroup ? selectedGroup.name : "No Group",
         participants
@@ -172,6 +256,155 @@ function ScanSplit({ user }) {
                 </div>
               </div>
             </div>
+
+            {selectedGroup && (
+              <>
+                <div className="p-sm bg-surface-container border-t border-b border-outline-variant flex flex-col sm:flex-row gap-sm items-center justify-between">
+                  <span className="font-label-md text-on-surface-variant">Split Mode</span>
+                  <div className="flex bg-surface-container-lowest rounded-lg p-xs border border-outline-variant w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchSplitMode('equal')}
+                      className={`flex-1 sm:flex-none px-md py-[6px] rounded-md font-label-sm text-label-sm transition-all ${splitMode === 'equal' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+                    >
+                      Equally
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchSplitMode('exact')}
+                      className={`flex-1 sm:flex-none px-md py-[6px] rounded-md font-label-sm text-label-sm transition-all ${splitMode === 'exact' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+                    >
+                      Exact
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchSplitMode('percentage')}
+                      className={`flex-1 sm:flex-none px-md py-[6px] rounded-md font-label-sm text-label-sm transition-all ${splitMode === 'percentage' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+                    >
+                      Percent
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-sm bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between">
+                  <span className="font-body-sm text-outline">
+                    {splitMode === 'equal' && "Splitting equally"}
+                    {splitMode === 'exact' && "Splitting by exact amounts"}
+                    {splitMode === 'percentage' && "Splitting by percentage share"}
+                    {" in "}
+                    <span className="font-semibold text-on-surface">{selectedGroup.name}</span>
+                  </span>
+                  <span className="font-label-sm bg-primary-container text-on-primary-container px-xs py-[2px] rounded-full border border-primary/10">
+                    {numMembers} members
+                  </span>
+                </div>
+
+                <div className="divide-y divide-outline-variant max-h-[250px] overflow-y-auto">
+                  {selectedGroup.members.map((member, index) => {
+                    const isUser = member.id === user.id;
+                    const computedShare = splitMode === 'percentage' 
+                      ? totalAmount * ((parseFloat(percentages[member.id]) || 0) / 100)
+                      : splitMode === 'exact'
+                        ? parseFloat(exactAmounts[member.id]) || 0
+                        : splitAmount;
+
+                    return (
+                      <div key={member.id || index} className="p-md flex items-center justify-between hover:bg-surface-container-low transition-colors">
+                        <div className="flex items-center gap-sm">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase">
+                            {member.name.charAt(0)}
+                          </div>
+                          <div>
+                            <span className="font-body-md text-on-surface font-semibold">{member.name}</span>
+                            {isUser && <span className="text-body-xs text-outline ml-xs">(You Paid)</span>}
+                            {splitMode === 'percentage' && (
+                              <p className="text-body-sm text-outline">
+                                Share: ${computedShare.toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {splitMode === 'equal' && (
+                          <span className="font-label-md text-label-md text-on-surface">
+                            ${splitAmount.toFixed(2)}
+                          </span>
+                        )}
+
+                        {splitMode === 'exact' && (
+                          <div className="flex items-center gap-xs">
+                            <span className="text-on-surface-variant font-label-sm font-semibold">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="w-24 px-xs py-xs text-right border border-outline-variant rounded-md bg-surface-container-lowest focus:ring-1 focus:ring-primary focus:border-primary outline-none font-body-md"
+                              value={exactAmounts[member.id] || ''}
+                              onChange={(e) => {
+                                setExactAmounts(prev => ({
+                                  ...prev,
+                                  [member.id]: e.target.value
+                                }));
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {splitMode === 'percentage' && (
+                          <div className="flex items-center gap-xs">
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              className="w-20 px-xs py-xs text-right border border-outline-variant rounded-md bg-surface-container-lowest focus:ring-1 focus:ring-primary focus:border-primary outline-none font-body-md"
+                              value={percentages[member.id] || ''}
+                              onChange={(e) => {
+                                setPercentages(prev => ({
+                                  ...prev,
+                                  [member.id]: e.target.value
+                                }));
+                              }}
+                            />
+                            <span className="text-on-surface-variant font-label-sm font-semibold">%</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {splitMode !== 'equal' && (
+                  <div className="p-md bg-surface-container-low border-t border-outline-variant flex items-center justify-between">
+                    {splitMode === 'exact' ? (
+                      isExactValid ? (
+                        <div className="flex items-center gap-xs text-secondary font-label-sm">
+                          <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                          Total matches: ${sumExact.toFixed(2)} / ${totalAmount.toFixed(2)}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-xs text-error font-label-sm">
+                          <span className="material-symbols-outlined text-[18px]">warning</span>
+                          Total mismatch: Sum is ${sumExact.toFixed(2)} (should be ${totalAmount.toFixed(2)})
+                        </div>
+                      )
+                    ) : (
+                      isPercentValid ? (
+                        <div className="flex items-center gap-xs text-secondary font-label-sm">
+                          <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                          Total matches: {sumPercent.toFixed(1)}% / 100% (${(totalAmount * (sumPercent / 100)).toFixed(2)} split)
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-xs text-error font-label-sm">
+                          <span className="material-symbols-outlined text-[18px]">warning</span>
+                          Total mismatch: Sum is {sumPercent.toFixed(1)}% (must sum to 100%)
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </>
+            )}
             
             {/* Footer Summary */}
             <div className="bg-surface-container-high p-md">
@@ -179,7 +412,15 @@ function ScanSplit({ user }) {
                 <span className="font-body-md text-body-md text-on-surface-variant">Your Share ({user.name})</span>
                 <span className="font-headline-md text-headline-md text-on-surface">${myShareAmount.toFixed(2)}</span>
               </div>
-              <button onClick={handleConfirm} disabled={saving} className="w-full py-md bg-primary text-on-primary rounded-xl font-label-md text-label-md shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-base disabled:opacity-50">
+              <button 
+                onClick={handleConfirm} 
+                disabled={
+                  saving ||
+                  (selectedGroup && splitMode === 'exact' && !isExactValid) ||
+                  (selectedGroup && splitMode === 'percentage' && !isPercentValid)
+                } 
+                className="w-full py-md bg-primary text-on-primary rounded-xl font-label-md text-label-md shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-base disabled:opacity-50"
+              >
                 {saving ? 'Creating Split...' : 'Confirm and Create Split'}
                 {!saving && <span className="material-symbols-outlined">arrow_forward</span>}
               </button>
