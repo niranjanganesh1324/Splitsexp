@@ -18,7 +18,7 @@
 |  **Dynamic Dashboard** | Real-time balance overview (You are owed / You owe), monthly spending totals, 7-day spending bar chart, and active group summaries — all calculated live from Firestore. |
 |  **Group Management** | Create expense-sharing circles with friends. Add members to existing groups. Delete groups via a branded custom confirmation modal. |
 |  **Manual Expense Entry** | Manually input title and amount, select group circle, and split cost. Supports Equal, Exact, and Percentage shares. |
-|  **Scan Receipt** | Upload a receipt image, assign to group, and split the bill. Supports Equal, Exact, and Percentage shares. |
+|  **Scan Receipt** | Capture live receipt photos (WebRTC in-app camera) or upload images. Processes text client-side via **Tesseract.js OCR** with real-time canvas preprocessing, auto-heals common OCR spelling/decimal errors, supports in-place item adjustments (add/delete/edit), and calculates group splits instantly. |
 |  **Flexible Splitting** | Toggle between **Equally** (even split), **Exact** (custom dollar shares), or **Percent** (custom percentage shares) with real-time validation math and auto-population convenience. |
 |  **Expense History** | Full table-view history of all past transactions with per-user balance status (paid / owed). |
 |  **Settle Balances** | Clear view of outstanding debts per friend. Shows "All settled up!" automatically when no debts remain. |
@@ -37,6 +37,7 @@
 | **Typography** | Inter via Google Fonts |
 | **Backend / DB** | Firebase Firestore (NoSQL) |
 | **Authentication** | Firebase Auth (Email/Password & Google Sign-In) |
+| **OCR Engine** | Tesseract.js (Client-side) |
 | **Build Tool** | Vite |
 
 ---
