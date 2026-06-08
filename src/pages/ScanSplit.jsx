@@ -1,12 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { addExpense, getGroups } from '../services/db';
+import Tesseract from 'tesseract.js';
 
 function ScanSplit({ user }) {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
+
+  // Scan & OCR States
+  const [title, setTitle] = useState("Receipt Scan");
+  const [totalAmount, setTotalAmount] = useState(0.00);
+  const [scannedItems, setScannedItems] = useState([]);
+  const [imageSrc, setImageSrc] = useState(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrStatus, setOcrStatus] = useState("");
+  const [ocrError, setOcrError] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Camera Refs
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [stream, setStream] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -33,7 +50,35 @@ function ScanSplit({ user }) {
     setPercentages({});
   }, [selectedGroup]);
 
-  const totalAmount = 248.50;
+  // Recalculate when totalAmount or selectedGroup changes
+  useEffect(() => {
+    if (!selectedGroup) return;
+    if (splitMode === 'exact') {
+      const baseShare = totalAmount / selectedGroup.members.length;
+      const initialAmounts = {};
+      selectedGroup.members.forEach(m => {
+        initialAmounts[m.id] = baseShare.toFixed(2);
+      });
+      setExactAmounts(initialAmounts);
+    } else if (splitMode === 'percentage') {
+      const basePercent = 100 / selectedGroup.members.length;
+      const initialPercents = {};
+      selectedGroup.members.forEach(m => {
+        initialPercents[m.id] = basePercent.toFixed(1);
+      });
+      setPercentages(initialPercents);
+    }
+  }, [totalAmount, selectedGroup]);
+
+  // Clean up camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
   const numMembers = selectedGroup ? selectedGroup.members.length : 0;
   const splitAmount = numMembers > 0 ? totalAmount / numMembers : 0;
 
@@ -68,7 +113,7 @@ function ScanSplit({ user }) {
   };
 
   const getUserShare = () => {
-    if (!selectedGroup) return 24.80; // mock default if no group
+    if (!selectedGroup) return totalAmount / 3;
     if (splitMode === 'equal') {
       return splitAmount;
     }
@@ -83,6 +128,199 @@ function ScanSplit({ user }) {
   };
 
   const myShareAmount = getUserShare();
+
+  // Camera handlers
+  const handleStartCamera = async () => {
+    setIsCameraActive(true);
+    setOcrError(null);
+    setImageSrc(null);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      setOcrError("Could not start live camera. Please use the device photo selector or drag/drop option.");
+      setIsCameraActive(false);
+    }
+  };
+
+  const handleCapturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      setImageSrc(dataUrl);
+      
+      // Stop stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+      setIsCameraActive(false);
+    }
+  };
+
+  const handleStopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  // Upload/File Selection handlers
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setImageSrc(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setImageSrc(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRetake = () => {
+    setImageSrc(null);
+    setOcrProgress(0);
+    setOcrStatus("");
+    setOcrError(null);
+    setScannedItems([]);
+    setTotalAmount(0.00);
+  };
+
+  // OCR Processing and Extraction
+  const extractItemsAndTotal = (text) => {
+    const lines = text.split('\n');
+    const items = [];
+    let detectedTotal = 0;
+    
+    // Regex to match a price-like number at the end of a line
+    const priceRegex = /[:\-\$]?\s*([0-9]+[\.,][0-9]{2})\s*$/;
+    const totalKeywords = /total|grand\s*total|amount\s*due|net\s*total|balance|sum/i;
+    const subtotalKeywords = /subtotal|sub\s*total/i;
+    const taxKeywords = /tax|gst|vat/i;
+
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      
+      const match = line.match(priceRegex);
+      if (match) {
+        const priceVal = parseFloat(match[1].replace(',', '.'));
+        const namePart = line.replace(match[0], '').replace(/^[^\w]+/, '').trim();
+        
+        if (totalKeywords.test(line)) {
+          if (priceVal > detectedTotal) {
+            detectedTotal = priceVal;
+          }
+        } else if (subtotalKeywords.test(line) || taxKeywords.test(line)) {
+          // Skip subtotal / tax lines
+        } else if (namePart.length > 2) {
+          items.push({
+            name: namePart,
+            price: priceVal
+          });
+        }
+      }
+    }
+    
+    // Fallback: use highest price if no total keyword matches
+    if (detectedTotal === 0) {
+      const prices = items.map(i => i.price);
+      if (prices.length > 0) {
+        detectedTotal = Math.max(...prices);
+        const maxIndex = items.findIndex(i => i.price === detectedTotal);
+        if (maxIndex !== -1) {
+          items.splice(maxIndex, 1);
+        }
+      }
+    }
+    
+    return { items, total: detectedTotal };
+  };
+
+  const handleScanReceipt = async () => {
+    if (!imageSrc) return;
+    setOcrProgress(1);
+    setOcrStatus("Initializing OCR engine...");
+    setOcrError(null);
+
+    try {
+      const result = await Tesseract.recognize(
+        imageSrc,
+        'eng',
+        {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              setOcrProgress(m.progress * 100);
+              setOcrStatus(`Extracting bill details...`);
+            } else {
+              setOcrStatus(m.status.charAt(0).toUpperCase() + m.status.slice(1) + "...");
+            }
+          }
+        }
+      );
+
+      const text = result.data.text;
+      const { items, total } = extractItemsAndTotal(text);
+      
+      setScannedItems(items);
+      setTotalAmount(total);
+      setOcrProgress(100);
+      setOcrStatus("Scan complete!");
+      
+      // Auto fill title if we can detect vendor name on line 1 or 2
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+      if (lines.length > 0) {
+        const possibleVendor = lines[0].slice(0, 30);
+        if (!/total|date|invoice|receipt/i.test(possibleVendor)) {
+          setTitle(`Scan: ${possibleVendor}`);
+        } else {
+          setTitle("Scanned Receipt");
+        }
+      } else {
+        setTitle("Scanned Receipt");
+      }
+      
+    } catch (err) {
+      console.error("OCR scanning error:", err);
+      setOcrError("Failed to parse the receipt. Please enter the amount manually or try another image.");
+      setOcrProgress(0);
+    }
+  };
 
   const handleConfirm = async () => {
     if (saving) return;
@@ -123,15 +361,15 @@ function ScanSplit({ user }) {
       }
     } else {
       participants = [
-        { id: user.id, name: user.name, amount: 24.80 },
-        { id: "mock-friend-1", name: "Sarah Ross", amount: 100.00 },
-        { id: "mock-friend-2", name: "Mike Jenkins", amount: 123.70 }
+        { id: user.id, name: user.name, amount: totalAmount / 3 },
+        { id: "mock-friend-1", name: "Sarah Ross", amount: totalAmount / 3 },
+        { id: "mock-friend-2", name: "Mike Jenkins", amount: totalAmount / 3 }
       ];
     }
 
     try {
       await addExpense({
-        title: "Grocery Run",
+        title: title || "Scanned Receipt",
         amount: totalAmount,
         paidBy: user.id,
         group: selectedGroup ? selectedGroup.name : "No Group",
@@ -149,7 +387,7 @@ function ScanSplit({ user }) {
       <div className="mb-md flex flex-col md:flex-row md:items-center justify-between gap-sm">
         <div>
           <h1 className="font-headline-lg text-headline-lg text-on-surface">Scan Receipt</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">Upload a receipt image to automatically detect and split items.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant">Upload a receipt or take a live photo to automatically analyze and split the bill.</p>
         </div>
         <Link 
           to="/manual" 
@@ -165,22 +403,161 @@ function ScanSplit({ user }) {
         <section className="lg:col-span-5 space-y-md">
           <div className="bg-surface-container-lowest rounded-xl p-md shadow-[0px_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant">
             <div className="flex items-center justify-between mb-md">
-              <h2 className="font-headline-md text-headline-md text-on-surface">Receipt Upload</h2>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Receipt Scan</h2>
               <span className="text-primary material-symbols-outlined text-[32px]">camera_enhance</span>
             </div>
-            <div className="relative group aspect-[3/4] bg-surface-container-low rounded-lg overflow-hidden border-2 border-dashed border-outline-variant hover:border-primary transition-colors flex flex-col items-center justify-center cursor-pointer">
-              <div className="text-center p-lg">
-                <span className="material-symbols-outlined text-outline text-[48px] mb-base">cloud_upload</span>
-                <p className="font-label-md text-label-md text-on-surface-variant">Drag and drop or click to upload receipt</p>
-                <p className="font-body-sm text-body-sm text-outline mt-xs">PNG, JPG or PDF up to 10MB</p>
+
+            {/* Hidden Input Files */}
+            <input 
+              type="file" 
+              accept="image/*" 
+              id="file-upload" 
+              className="hidden" 
+              onChange={handleFileChange} 
+            />
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment" 
+              id="camera-upload" 
+              className="hidden" 
+              onChange={handleFileChange} 
+            />
+
+            {/* Live Camera Viewfinder */}
+            {isCameraActive ? (
+              <div className="relative aspect-[3/4] bg-black rounded-lg overflow-hidden border border-outline-variant flex flex-col justify-between">
+                <video 
+                  ref={videoRef} 
+                  className="w-full h-full object-cover" 
+                  playsInline 
+                  muted 
+                />
+                <canvas ref={canvasRef} className="hidden" />
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-md z-10">
+                  <button 
+                    onClick={handleCapturePhoto} 
+                    className="p-sm bg-primary text-on-primary rounded-full hover:opacity-90 transition-opacity flex items-center justify-center shadow-lg"
+                    title="Capture Photo"
+                  >
+                    <span className="material-symbols-outlined text-[28px]">photo_camera</span>
+                  </button>
+                  <button 
+                    onClick={handleStopCamera} 
+                    className="p-sm bg-error text-on-error rounded-full hover:opacity-90 transition-opacity flex items-center justify-center shadow-lg"
+                    title="Cancel"
+                  >
+                    <span className="material-symbols-outlined text-[28px]">close</span>
+                  </button>
+                </div>
               </div>
-              {/* Simulated Scanned Image Overlay */}
-              <div className="absolute inset-0 opacity-10 bg-cover bg-center grayscale" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuD3jqUjBxKghgwQu5XAyG-_QUwOG-CffEzRQPwsNjAPNC2QuVYNiOUGWYhEapUihtqJ7d4EirqPeyRLuwtMFYs00GPVzKMQaLvSANJXQSGKDr5ErZRB3ME3d84j924AakZ0AObTyJDymfZZyqwklK73aQ_4c63BHE0d5U4ST0I9cOrNSyB4SeEwKeM4BWQ08GJ89LcN9TSuP8sAUgGo2xPfUbfaKDebG4Xj-nwlhtSSKOnKqcgxrHjoyWnHMOzPq5WRPU0HPsFwo2k')" }}></div>
-            </div>
-            <div className="mt-md flex gap-base">
-              <button className="flex-1 py-sm bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity">Extract Items</button>
-              <button className="px-md py-sm border border-outline-variant text-on-surface rounded-lg font-label-md text-label-md hover:bg-surface-container-high transition-colors">Retake</button>
-            </div>
+            ) : imageSrc ? (
+              /* Image Preview View */
+              <div className="relative aspect-[3/4] bg-surface-container-low rounded-lg overflow-hidden border border-outline-variant">
+                <img 
+                  src={imageSrc} 
+                  alt="Scanned Receipt Preview" 
+                  className="w-full h-full object-contain" 
+                />
+                <button 
+                  onClick={handleRetake} 
+                  className="absolute top-2 right-2 p-xs bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+                  title="Clear Image"
+                >
+                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                </button>
+              </div>
+            ) : (
+              /* Drag and Drop File Selection View */
+              <div 
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('file-upload').click()}
+                className={`relative group aspect-[3/4] bg-surface-container-low rounded-lg overflow-hidden border-2 border-dashed transition-all flex flex-col items-center justify-center cursor-pointer ${
+                  isDragOver ? 'border-primary bg-primary-container/10' : 'border-outline-variant hover:border-primary'
+                }`}
+              >
+                <div className="text-center p-lg pointer-events-none">
+                  <span className="material-symbols-outlined text-outline text-[48px] mb-base">cloud_upload</span>
+                  <p className="font-label-md text-label-md text-on-surface-variant">Drag and drop or click to upload receipt</p>
+                  <p className="font-body-sm text-body-sm text-outline mt-xs">PNG, JPG, JPEG or WebP files</p>
+                </div>
+              </div>
+            )}
+
+            {/* Controls */}
+            {!isCameraActive && (
+              <div className="mt-md flex flex-col gap-sm">
+                {imageSrc ? (
+                  <div className="flex gap-base">
+                    <button 
+                      onClick={handleScanReceipt} 
+                      disabled={ocrProgress > 0 && ocrProgress < 100}
+                      className="flex-grow py-sm bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity flex items-center justify-center gap-xs disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">document_scanner</span>
+                      {ocrProgress > 0 && ocrProgress < 100 ? "Scanning..." : "Scan Receipt"}
+                    </button>
+                    <button 
+                      onClick={handleRetake} 
+                      className="px-md py-sm border border-outline-variant text-on-surface rounded-lg font-label-md text-label-md hover:bg-surface-container-high transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-xs">
+                    <div className="flex gap-xs">
+                      <button 
+                        onClick={handleStartCamera} 
+                        className="flex-1 py-sm bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity flex items-center justify-center gap-xs"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                        Live Camera
+                      </button>
+                      <button 
+                        onClick={() => document.getElementById('camera-upload').click()} 
+                        className="flex-1 py-sm border border-outline text-on-surface rounded-lg font-label-md text-label-md hover:bg-surface-container-high transition-colors flex items-center justify-center gap-xs"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">smartphone</span>
+                        Device Cam
+                      </button>
+                    </div>
+                    <button 
+                      onClick={() => document.getElementById('file-upload').click()} 
+                      className="w-full py-sm border border-outline-variant text-on-surface rounded-lg font-label-sm text-label-sm hover:bg-surface-container-high transition-colors"
+                    >
+                      Select File from Gallery
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* OCR Progress display */}
+            {ocrProgress > 0 && ocrProgress < 100 && (
+              <div className="mt-md p-sm bg-primary-container/20 border border-primary/20 rounded-lg">
+                <div className="flex justify-between font-label-sm text-label-sm text-primary mb-xs">
+                  <span>{ocrStatus}</span>
+                  <span>{Math.round(ocrProgress)}%</span>
+                </div>
+                <div className="w-full bg-surface-container-high rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className="bg-primary h-full transition-all duration-300" 
+                    style={{ width: `${ocrProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {/* OCR Error Display */}
+            {ocrError && (
+              <div className="mt-md p-sm bg-error-container text-on-error-container border border-error/20 rounded-lg flex items-center gap-xs font-body-sm text-body-sm">
+                <span className="material-symbols-outlined text-error text-[18px]">error</span>
+                <span>{ocrError}</span>
+              </div>
+            )}
           </div>
           
           {/* Group Selector */}
@@ -214,49 +591,66 @@ function ScanSplit({ user }) {
         {/* Right: Itemized List and Split Logic */}
         <section className="lg:col-span-7 space-y-md">
           <div className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant overflow-hidden">
-            <div className="p-md border-b border-outline-variant flex justify-between items-end">
-              <div>
+            
+            {/* Title & Total Review Block */}
+            <div className="p-md border-b border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-md">
+              <div className="flex-grow">
                 <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider">Analysis Result</span>
-                <h2 className="font-headline-md text-headline-md text-on-surface">Itemized Bill Details</h2>
+                <input 
+                  type="text" 
+                  className="w-full mt-xs p-xs border-b border-dashed border-outline hover:border-primary focus:border-primary outline-none font-headline-md text-headline-md text-on-surface bg-transparent"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Expense Title (e.g. Walmart Run)"
+                />
               </div>
-              <div className="text-right">
-                <span className="font-label-sm text-label-sm text-outline">Total Amount</span>
-                <p className="font-headline-md text-headline-md text-primary">$248.50</p>
+              <div className="text-left sm:text-right flex flex-col sm:items-end">
+                <span className="font-label-sm text-label-sm text-outline">Total Amount ($)</span>
+                <input 
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="w-32 mt-xs p-xs text-left sm:text-right font-headline-md text-headline-md text-primary bg-transparent border-b border-dashed border-primary hover:border-primary/80 focus:border-primary outline-none"
+                  value={totalAmount === 0 ? "" : totalAmount}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setTotalAmount(val);
+                  }}
+                  placeholder="0.00"
+                />
               </div>
             </div>
             
-            {/* Member Selection Quick-Chips */}
-            <div className="p-sm bg-surface-container-low flex gap-xs overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-xs bg-primary-container text-on-primary-container px-sm py-xs rounded-full border border-primary/20 whitespace-nowrap">
-                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[10px] text-white">JD</div>
-                <span className="font-label-sm text-label-sm">John D.</span>
-              </div>
-              <div className="flex items-center gap-xs bg-white text-on-surface-variant px-sm py-xs rounded-full border border-outline-variant whitespace-nowrap hover:bg-surface-container-high cursor-pointer">
-                <div className="w-5 h-5 rounded-full bg-secondary-fixed-dim flex items-center justify-center text-[10px] text-on-secondary-fixed">SR</div>
-                <span className="font-label-sm text-label-sm">Sarah R.</span>
-              </div>
-            </div>
-            
-            {/* Item List */}
-            <div className="divide-y divide-outline-variant">
-              {/* Item Row 1 */}
-              <div className="p-md flex items-start gap-md hover:bg-surface-container-low transition-colors">
-                <div className="pt-xs">
-                  <input defaultChecked className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" type="checkbox"/>
-                </div>
-                <div className="flex-grow">
-                  <div className="flex justify-between">
-                    <h3 className="font-label-md text-label-md text-on-surface">Whole Organic Chicken</h3>
-                    <span className="font-label-md text-label-md text-on-surface">$18.40</span>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-outline mb-base">Grocery • Tax Incl.</p>
-                  <div className="flex flex-wrap gap-xs">
-                    <span className="px-xs py-[2px] bg-secondary-container/30 text-secondary text-[10px] font-bold rounded uppercase">Shared by 3</span>
-                  </div>
-                </div>
-              </div>
+            {/* Scanned Items Header */}
+            <div className="p-sm bg-surface-container-low border-b border-outline-variant">
+              <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider">Scanned Items Breakdown</span>
             </div>
 
+            {/* Item List */}
+            <div className="divide-y divide-outline-variant max-h-[300px] overflow-y-auto">
+              {scannedItems.length > 0 ? (
+                scannedItems.map((item, idx) => (
+                  <div key={idx} className="p-md flex items-start gap-md hover:bg-surface-container-low transition-colors">
+                    <div className="flex-grow">
+                      <div className="flex justify-between">
+                        <h3 className="font-label-md text-label-md text-on-surface">{item.name}</h3>
+                        <span className="font-label-md text-label-md text-on-surface">${item.price.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-lg text-center text-outline text-body-sm">
+                  {ocrProgress > 0 && ocrProgress < 100 ? (
+                    <span>Extracting items from receipt...</span>
+                  ) : (
+                    <span>No items scanned. Upload/capture a receipt to automatically parse items.</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Split Mode Selector (only if group selected) */}
             {selectedGroup && (
               <>
                 <div className="p-sm bg-surface-container border-t border-b border-outline-variant flex flex-col sm:flex-row gap-sm items-center justify-between">
@@ -416,6 +810,7 @@ function ScanSplit({ user }) {
                 onClick={handleConfirm} 
                 disabled={
                   saving ||
+                  totalAmount <= 0 ||
                   (selectedGroup && splitMode === 'exact' && !isExactValid) ||
                   (selectedGroup && splitMode === 'percentage' && !isPercentValid)
                 } 
@@ -433,8 +828,8 @@ function ScanSplit({ user }) {
               <span className="material-symbols-outlined">lightbulb</span>
             </div>
             <div>
-              <h4 className="font-label-md text-label-md text-on-surface">Pro-tip: Auto-Split</h4>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">We've automatically detected tax and service charges. You can choose to split these proportionally or as a fixed amount in the settings.</p>
+              <h4 className="font-label-md text-label-md text-on-surface">Scan & Split Insights</h4>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">Verify the scanned title and total. Items matching prices will be automatically listed above. You can easily click and edit any details if needed.</p>
             </div>
           </div>
         </section>
