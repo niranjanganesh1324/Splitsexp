@@ -1,4 +1,6 @@
+# Trigger build with configured GitHub Secrets for Firebase
 name: Deploy to GitHub Pages
+
 
 on:
   push:
