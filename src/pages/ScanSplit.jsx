@@ -430,9 +430,9 @@ function ScanSplit({ user }) {
               setOcrStatus(m.status.charAt(0).toUpperCase() + m.status.slice(1) + "...");
             }
           },
-          workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js',
-          corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@7.0.0/tesseract-core.wasm.js',
-          workerBlobURL: false, // Bypasses browser Content Security Policy (CSP) limitations on Blob workers
+          workerPath: '/tesseract/worker.min.js',
+          corePath: '/tesseract',
+          workerBlobURL: false, // Bypasses browser Content Security Policy (CSP) limitations on Blob workers (safe now since hosted on same-origin)
           parameters: {
             tessedit_pageseg_mode: '4', // Assume a single column of text (best for columns layout like bills)
             tessedit_char_whitelist: '0123456789.,$+-/ \n\rABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#()&[]:%'
