@@ -1,241 +1,172 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
+const API_URL = 'http://localhost:5000/api';
 
-import {
-  doc,
-  setDoc,
-  addDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-  serverTimestamp,
-  updateDoc,
-  arrayUnion,
-  deleteDoc
-} from "firebase/firestore";
+let authStateListener = null;
 
-import { auth, db } from "./firebase";
-
-// AUTH
-
-export const signup = async (
-  name,
-  email,
-  password
-) => {
-  const cred =
-    await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-
-  await updateProfile(
-    cred.user,
-    {
-      displayName: name,
-    }
-  );
-
-  await setDoc(
-    doc(db, "users", cred.user.uid),
-    {
-      uid: cred.user.uid,
-      name,
-      email,
-      createdAt: Date.now(),
-    }
-  );
-
+// Helper to get authorization headers
+const getHeaders = () => {
+  const token = localStorage.getItem('token');
   return {
-    id: cred.user.uid,
-    name,
-    email,
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 };
 
-export const login = async (
-  email,
-  password
-) => {
-  const cred =
-    await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+// ==========================================
+// AUTH SERVICES
+// ==========================================
 
-  return {
-    id: cred.user.uid,
-    name:
-      cred.user.displayName ||
-      "User",
-    email: cred.user.email,
-  };
+export const signup = async (name, email, password) => {
+  const res = await fetch(`${API_URL}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Sign up failed");
+  }
+
+  const { user, token } = await res.json();
+  localStorage.setItem('token', token);
+
+  if (authStateListener) {
+    authStateListener(user);
+  }
+
+  return user;
+};
+
+export const login = async (email, password) => {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Login failed");
+  }
+
+  const { user, token } = await res.json();
+  localStorage.setItem('token', token);
+
+  if (authStateListener) {
+    authStateListener(user);
+  }
+
+  return user;
 };
 
 export const logout = async () => {
-  await signOut(auth);
+  localStorage.removeItem('token');
+  if (authStateListener) {
+    authStateListener(null);
+  }
 };
 
-export const subscribeToAuthChanges = (
-  callback
-) => {
-  return onAuthStateChanged(
-    auth,
-    (user) => {
-      if (!user) {
-        callback(null);
-        return;
-      }
+export const subscribeToAuthChanges = (callback) => {
+  authStateListener = callback;
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    // Immediate callback if no token is stored locally
+    setTimeout(() => callback(null), 0);
+    return () => {
+      authStateListener = null;
+    };
+  }
 
-      callback({
-        id: user.uid,
-        name:
-          user.displayName ||
-          "User",
-        email: user.email,
-      });
+  // Fetch logged in profile details
+  fetch(`${API_URL}/auth/me`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
     }
-  );
-};
-
-export const loginWithGoogle = async () => {
-  const provider = new GoogleAuthProvider();
-  const cred = await signInWithPopup(auth, provider);
-
-  await setDoc(
-    doc(db, "users", cred.user.uid),
-    {
-      uid: cred.user.uid,
-      name: cred.user.displayName || "User",
-      email: cred.user.email,
-      createdAt: Date.now(),
-    },
-    { merge: true }
-  );
-
-  return {
-    id: cred.user.uid,
-    name: cred.user.displayName || "User",
-    email: cred.user.email,
-  };
-};
-
-// EXPENSES
-
-export const getExpenses = async (
-  userId
-) => {
-  const q = query(
-    collection(db, "expenses"),
-    where(
-      "userIds",
-      "array-contains",
-      userId
-    )
-  );
-
-  const snapshot =
-    await getDocs(q);
-
-  const expenses =
-    snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-  return expenses.sort(
-    (a, b) =>
-      (b.timestamp?.seconds || 0) -
-      (a.timestamp?.seconds || 0)
-  );
-};
-
-export const addExpense = async (
-  expenseData
-) => {
-  const userIds = [
-    expenseData.paidBy,
-    ...expenseData.participants.map(
-      (p) => p.id
-    ),
-  ];
-
-  const docRef =
-    await addDoc(
-      collection(db, "expenses"),
-      {
-        ...expenseData,
-        userIds: [
-          ...new Set(userIds),
-        ],
-        timestamp:
-          serverTimestamp(),
-      }
-    );
-
-  return {
-    id: docRef.id,
-    ...expenseData,
-  };
-};
-
-export const getBalances =
-  async (userId) => {
-    const expenses =
-      await getExpenses(userId);
-
-    const balances = {};
-
-    expenses.forEach((exp) => {
-      if (
-        exp.paidBy === userId
-      ) {
-        exp.participants.forEach(
-          (p) => {
-            if (
-              p.id !== userId
-            ) {
-              balances[p.id] =
-                (balances[
-                  p.id
-                ] || 0) +
-                p.amount;
-            }
-          }
-        );
-      } else {
-        const myShare =
-          exp.participants.find(
-            (p) =>
-              p.id === userId
-          )?.amount || 0;
-
-        if (myShare > 0) {
-          balances[
-            exp.paidBy
-          ] =
-            (balances[
-              exp.paidBy
-            ] || 0) -
-            myShare;
-        }
-      }
+  })
+    .then(async (res) => {
+      if (!res.ok) throw new Error("Unauthorized token");
+      const user = await res.json();
+      callback(user);
+    })
+    .catch((err) => {
+      console.warn("Token validation failed, logging out:", err.message);
+      localStorage.removeItem('token');
+      callback(null);
     });
 
-    return balances;
+  return () => {
+    authStateListener = null;
   };
+};
 
-// GROUPS
+// Mock Google Sign-In: registers/logs in a temporary Google test user
+export const loginWithGoogle = async () => {
+  const randId = Math.random().toString(36).substring(2, 9);
+  const name = "Google Tester " + randId.toUpperCase();
+  const email = `google_${randId}@example.com`;
+  const password = "google_secret_password_12345";
+  
+  return signup(name, email, password);
+};
+
+// ==========================================
+// EXPENSES SERVICES
+// ==========================================
+
+export const getExpenses = async (userId) => {
+  const res = await fetch(`${API_URL}/expenses`, {
+    headers: getHeaders()
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to fetch expenses");
+  }
+
+  return res.json();
+};
+
+export const addExpense = async (expenseData) => {
+  const res = await fetch(`${API_URL}/expenses`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(expenseData)
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to add expense");
+  }
+
+  return res.json();
+};
+
+export const getBalances = async (userId) => {
+  const expenses = await getExpenses(userId);
+  const balances = {};
+
+  expenses.forEach((exp) => {
+    if (exp.paidBy === userId) {
+      exp.participants.forEach((p) => {
+        if (p.id !== userId) {
+          balances[p.id] = (balances[p.id] || 0) + p.amount;
+        }
+      });
+    } else {
+      const myShare = exp.participants.find((p) => p.id === userId)?.amount || 0;
+      if (myShare > 0) {
+        balances[exp.paidBy] = (balances[exp.paidBy] || 0) - myShare;
+      }
+    }
+  });
+
+  return balances;
+};
+
+// ==========================================
+// GROUPS SERVICES
+// ==========================================
 
 export const createGroup = async (groupName, creatorUser, memberNames = []) => {
   const members = [
@@ -245,58 +176,63 @@ export const createGroup = async (groupName, creatorUser, memberNames = []) => {
   memberNames.forEach(name => {
     if (name.trim()) {
       members.push({
-        id: 'friend-' + Math.random().toString(36).substring(2, 9),
         name: name.trim()
       });
     }
   });
 
-  const memberIds = [creatorUser.id];
-
-  const docRef = await addDoc(collection(db, "groups"), {
-    name: groupName,
-    members,
-    memberIds,
-    createdBy: creatorUser.id,
-    timestamp: serverTimestamp()
+  const res = await fetch(`${API_URL}/groups`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ name: groupName, members })
   });
 
-  return {
-    id: docRef.id,
-    name: groupName,
-    members,
-    memberIds,
-    createdBy: creatorUser.id
-  };
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to create group");
+  }
+
+  return res.json();
 };
 
 export const getGroups = async (userId) => {
-  const q = query(
-    collection(db, "groups"),
-    where("memberIds", "array-contains", userId)
-  );
+  const res = await fetch(`${API_URL}/groups`, {
+    headers: getHeaders()
+  });
 
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to fetch groups");
+  }
+
+  return res.json();
 };
 
 export const addMemberToGroup = async (groupId, memberName) => {
-  const groupRef = doc(db, "groups", groupId);
-  const newMember = {
-    id: 'friend-' + Math.random().toString(36).substring(2, 9),
-    name: memberName.trim()
-  };
-
-  await updateDoc(groupRef, {
-    members: arrayUnion(newMember)
+  const res = await fetch(`${API_URL}/groups/${groupId}/members`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ name: memberName })
   });
 
-  return newMember;
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to add member to group");
+  }
+
+  return res.json();
 };
 
 export const deleteGroup = async (groupId) => {
-  await deleteDoc(doc(db, "groups", groupId));
+  const res = await fetch(`${API_URL}/groups/${groupId}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to delete group");
+  }
+
+  return res.json();
 };
