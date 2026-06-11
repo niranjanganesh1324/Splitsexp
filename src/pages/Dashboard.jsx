@@ -78,8 +78,8 @@ function Dashboard({ user }) {
 
   const monthlySpending = calculateMonthlySpending();
 
-  // Weekly spending heights (for last 7 days)
-  const getWeeklyHeights = () => {
+  // Weekly spending data (for last 7 days)
+  const getWeeklyData = () => {
     const daily = Array(7).fill(0);
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -89,8 +89,13 @@ function Dashboard({ user }) {
         ? new Date(exp.timestamp.seconds * 1000) 
         : new Date(exp.timestamp || Date.now());
       
-      const diffTime = Math.abs(today - expDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) - 1;
+      const diffTime = today.getTime() - expDate.getTime();
+      let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      // Handle slight clock desync
+      if (diffDays < 0 && diffTime > -7200000) {
+        diffDays = 0;
+      }
 
       if (diffDays >= 0 && diffDays < 7) {
         const myShare = exp.participants.find(p => p.id === user.id)?.amount || 0;
@@ -99,11 +104,26 @@ function Dashboard({ user }) {
     });
 
     const maxVal = Math.max(...daily);
-    if (maxVal === 0) return Array(7).fill(15); // Default flat representation if no data
-    return daily.map(val => Math.max((val / maxVal) * 100, 10)); // Keep min height of 10% for visual design
+    
+    // Generate day labels (e.g., "Mon", "Tue", etc.)
+    const labels = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+    }
+
+    return daily.map((value, idx) => {
+      const percentage = maxVal === 0 ? 15 : Math.max((value / maxVal) * 100, 10);
+      return {
+        day: labels[idx],
+        value: value,
+        height: percentage
+      };
+    });
   };
 
-  const weeklyHeights = getWeeklyHeights();
+  const weeklyData = getWeeklyData();
 
   // Dynamic Frequent Friends list
   const getFrequentFriends = () => {
@@ -187,13 +207,29 @@ function Dashboard({ user }) {
           <div className="flex items-end gap-xs mb-sm">
             <span className="font-headline-md text-headline-md text-on-surface">${monthlySpending.toFixed(2)}</span>
           </div>
-          <div className="flex-grow flex items-end gap-xs h-32">
-            {weeklyHeights.map((h, i) => (
-              <div 
-                key={i} 
-                className={`flex-1 rounded-t-sm transition-all duration-500 ${i === 6 ? 'bg-primary' : 'bg-primary-container/20'}`}
-                style={{ height: `${h}%` }}
-              ></div>
+          <div className="flex-grow flex items-end gap-sm h-36 mt-sm pb-xs">
+            {weeklyData.map((data, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                {/* Tooltip */}
+                <div className="absolute bottom-full mb-2 bg-inverse-surface text-inverse-on-surface text-[10px] font-semibold px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                  ${data.value.toFixed(2)}
+                </div>
+                
+                {/* Bar */}
+                <div 
+                  className={`w-full rounded-t-sm transition-all duration-300 ease-out cursor-pointer origin-bottom hover:scale-y-[1.03] ${
+                    i === 6 
+                      ? 'bg-primary hover:bg-primary/90' 
+                      : 'bg-primary-container/30 hover:bg-primary-container/50'
+                  }`}
+                  style={{ height: `${data.height}%` }}
+                ></div>
+                
+                {/* Day label */}
+                <span className="font-label-sm text-[10px] text-on-surface-variant mt-2 select-none uppercase tracking-wider">
+                  {data.day}
+                </span>
+              </div>
             ))}
           </div>
           <p className="font-body-sm text-body-sm text-on-surface-variant mt-sm">Your dynamic 7-day spending distribution index.</p>
