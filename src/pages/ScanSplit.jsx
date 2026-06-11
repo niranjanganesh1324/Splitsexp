@@ -267,7 +267,7 @@ function ScanSplit({ user }) {
     setScannedItems(newItems);
   };
 
-  // Image Preprocessing Helper to convert to high-contrast grayscale
+  // Image Preprocessing Helper to resize and prepare image for OCR
   const preprocessImage = (src) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -294,38 +294,10 @@ function ScanSplit({ user }) {
         ctx.drawImage(img, 0, 0, w, h);
         
         try {
-          const imgData = ctx.getImageData(0, 0, w, h);
-          const data = imgData.data;
-          
-          // Apply Grayscale and Adaptive soft binarization
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            
-            // Grayscale (Luminance)
-            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-            
-            // Contrast thresholding: makes darks darker and lights lighter
-            let v = gray;
-            if (gray < 115) {
-              v = 0;
-            } else if (gray > 145) {
-              v = 255;
-            } else {
-              v = ((gray - 115) / 30) * 255;
-            }
-            
-            data[i] = v;     // R
-            data[i + 1] = v; // G
-            data[i + 2] = v; // B
-          }
-          
-          ctx.putImageData(imgData, 0, 0);
           resolve(canvas.toDataURL('image/jpeg', 0.95));
         } catch (e) {
-          console.error("Canvas pixel data access error:", e);
-          resolve(src); // Fallback to original image if drawing fails
+          console.error("Canvas export error:", e);
+          resolve(src); // Fallback to original image if export fails
         }
       };
       img.onerror = () => {
@@ -341,26 +313,25 @@ function ScanSplit({ user }) {
     const items = [];
     let detectedTotal = 0;
     
-    // Total, subtotal, and tax keywords
+    // Keywords
     const totalKeywords = /total|grand\s*total|amount\s*due|net\s*total|balance|sum/i;
     const subtotalKeywords = /subtotal|sub\s*total/i;
     const taxKeywords = /tax|gst|vat/i;
+    const headerKeywords = /item|qty|price|amount|desc|no\./i;
+
+    let previousUnmatchedLine = "";
 
     for (let rawLine of lines) {
-      // Clean up OCR line:
-      // 1. Normalize spaces
-      // 2. Fix spaces around dots/commas (e.g., "12 . 50" -> "12.50")
-      // 3. Fix missing decimal point where space is present (e.g., "12 50" at end -> "12.50")
+      // Clean up OCR line: normalize spaces and common decimal formats
       let line = rawLine.trim()
         .replace(/\s+/g, ' ')
-        .replace(/(\d+)\s*[\.,]\s*(\d{2})/g, '$1.$2')
-        .replace(/(\d+)\s+(\d{2})\s*$/g, '$1.$2');
+        .replace(/(\d+)\s*[\.,]\s*(\d{1,2})/g, '$1.$2')
+        .replace(/(\d+)\s+(\d{1,2})\s*$/g, '$1.$2');
       
       if (!line) continue;
       
-      // Match price-like string at the end of the line (e.g., 18.40, $18.40, 18.4O)
-      // Allow common letter substitutions in decimal portion like O, o, S, s, I, i, l
-      const priceRegex = /[:\-\$]?\s*([0-9]+[\.,][0-9SOsoIil]{2})\s*$/;
+      // Match price-like string with 1 or 2 decimal digits at the end of the line
+      const priceRegex = /[:\-\$]?\s*([0-9]+[\.,][0-9SOsoIil]{1,2})\s*([^0-9]*)$/;
       const match = line.match(priceRegex);
       
       if (match) {
@@ -374,32 +345,72 @@ function ScanSplit({ user }) {
         const priceVal = parseFloat(priceStr);
         if (isNaN(priceVal)) continue;
 
-        const namePart = line.replace(match[0], '').replace(/^[^\w]+/, '').trim();
-        
+        // Slice up to the start of the matched price
+        let namePart = line.substring(0, match.index).trim();
+
+        // Prepend previous unmatched line if applicable
+        if (
+          previousUnmatchedLine &&
+          previousUnmatchedLine.length > 2 &&
+          !totalKeywords.test(previousUnmatchedLine) &&
+          !headerKeywords.test(previousUnmatchedLine)
+        ) {
+          namePart = previousUnmatchedLine + " " + namePart;
+        }
+        previousUnmatchedLine = ""; // Reset
+
+        // Clean up trailing garbage, unit price, quantity, and leading numbers from item name
+        let cleanedName = namePart
+          .replace(/[^a-zA-Z0-9)]+$/, '') // strip trailing symbols
+          .replace(/\s+[:\-\$]?\s*\d+[\.,]\d{1,2}\s*$/, '') // strip unit price
+          .replace(/\s+\d+\s*$/, '') // strip quantity
+          .replace(/^\d+\s+/, '') // strip leading item numbers
+          .trim();
+          
         if (totalKeywords.test(line)) {
           if (priceVal > detectedTotal) {
             detectedTotal = priceVal;
           }
         } else if (subtotalKeywords.test(line) || taxKeywords.test(line)) {
           // Skip subtotal / tax lines
-        } else if (namePart.length > 2) {
+        } else if (cleanedName.length > 2) {
           items.push({
-            name: namePart,
+            name: cleanedName,
             price: priceStr
           });
+        }
+      } else {
+        // If line has no price, keep it as a previous line description candidate if it's not a header/total/tax
+        const trimmed = rawLine.trim();
+        if (
+          trimmed.length > 2 &&
+          !totalKeywords.test(trimmed) &&
+          !subtotalKeywords.test(trimmed) &&
+          !taxKeywords.test(trimmed) &&
+          !headerKeywords.test(trimmed)
+        ) {
+          previousUnmatchedLine = trimmed;
+        } else {
+          previousUnmatchedLine = "";
         }
       }
     }
     
-    // Fallback: use highest price if no total keyword matches
-    if (detectedTotal === 0) {
-      const prices = items.map(i => parseFloat(i.price) || 0);
-      if (prices.length > 0) {
-        detectedTotal = Math.max(...prices);
-        const maxIndex = items.findIndex(i => (parseFloat(i.price) || 0) === detectedTotal);
-        if (maxIndex !== -1) {
-          items.splice(maxIndex, 1);
-        }
+    // Fallback: use highest price if no total keyword matches or to verify against OCR inaccuracies
+    const prices = items.map(i => parseFloat(i.price) || 0);
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+    
+    let fallbackUsed = false;
+    if (maxPrice > detectedTotal) {
+      detectedTotal = maxPrice;
+      fallbackUsed = true;
+    }
+    
+    // Only remove the max price item if we used it as fallback for total amount
+    if (fallbackUsed) {
+      const totalItemIndex = items.findIndex(i => (parseFloat(i.price) || 0) === detectedTotal);
+      if (totalItemIndex !== -1) {
+        items.splice(totalItemIndex, 1);
       }
     }
     
