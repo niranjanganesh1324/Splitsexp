@@ -35,9 +35,9 @@
 | **Styling** | Tailwind CSS 3 (Material Design 3 token system) |
 | **Icons** | Google Material Symbols (Outlined) |
 | **Typography** | Inter via Google Fonts |
-| **Backend / DB** | Firebase Firestore (NoSQL) |
-| **Authentication** | Firebase Auth (Email/Password & Google Sign-In) |
-| **OCR Engine** | Tesseract.js (Client-side) |
+| **Backend / DB (Default)** | Firebase Firestore (NoSQL) + Firebase Auth |
+| **Backend / DB (Local)** | Custom Node.js Express REST API + SQLite Database + JWT Auth |
+| **OCR Engine** | Tesseract.js (Client-side, self-hosted in `public/tesseract/`) |
 | **Build Tool** | Vite |
 
 ---
@@ -46,33 +46,27 @@
 
 ```
 splitsexp/
+├── backend/                 # Custom Node.js Express server
+│   ├── database.js          # SQLite connection, schemas & queries
+│   ├── server.js            # Express API endpoints & JWT middleware
+│   └── package.json         # Backend dependencies
 ├── public/                  # Static assets
+│   ├── tesseract/           # Self-hosted Tesseract worker & WASM core files
+│   └── favicon.svg
 ├── src/
-│   ├── components/
-│   │   ├── AddExpense.jsx   # Form to manually add a new expense
-│   │   ├── ExpenseHistory.jsx  # Recent expense list component
-│   │   ├── Footer.jsx
-│   │   ├── Header.jsx       # Sticky navigation bar
-│   │   └── ScanBill.jsx     # Bill scanning UI component
-│   ├── pages/
-│   │   ├── Dashboard.jsx    # Main authenticated landing page
-│   │   ├── GroupManagement.jsx  # Create, view, and delete groups
-│   │   ├── History.jsx      # Full expense transaction history
-│   │   ├── Landing.jsx      # Marketing page + auth forms
-│   │   ├── ManualExpense.jsx # Manual expense entry and split config
-│   │   ├── ScanSplit.jsx    # Receipt scanning & group assignment
-│   │   └── SettleBalances.jsx   # Outstanding debts overview
+│   ├── components/          # Reusable UI components
+│   ├── pages/               # React page views
 │   ├── services/
-│   │   ├── db.js            # All Firestore & Auth service functions
+│   │   ├── db.js            # Router switcher between Firestore & SQLite REST client
+│   │   ├── db_firebase.js   # Original Firestore database client
+│   │   ├── db_custom.js     # Custom Express REST client
 │   │   └── firebase.js      # Firebase app initialization
-│   ├── App.jsx              # Root app with React Router setup
-│   ├── index.css            # Tailwind directives + utility layer
-│   └── main.jsx             # Entry point
+│   ├── App.jsx              # Root app routing
+│   ├── index.css            # Style tokens
+│   └── main.jsx             # React entry point
 ├── firestore.rules          # Firestore security rules
 ├── firebase.json            # Firebase project configuration
-├── tailwind.config.js       # Design token system (Material Design 3)
-├── vite.config.js
-└── .env                     # Environment variables (not committed)
+└── .env                     # App configuration env variables
 ```
 
 ---
@@ -82,7 +76,7 @@ splitsexp/
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) v18 or higher
-- A [Firebase project](https://console.firebase.google.com/) with **Authentication** (Email/Password) and **Firestore Database** enabled
+- A [Firebase project](https://console.firebase.google.com/) (Optional: only needed if running in Firebase mode)
 
 ### 1. Clone the repository
 
@@ -93,21 +87,33 @@ cd Splitsexp
 
 ### 2. Install dependencies
 
+Install both the frontend and custom backend dependencies:
+
 ```bash
+# Frontend
 npm install
+
+# Backend
+cd backend
+npm install
+cd ..
 ```
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the project root by copying the example:
+Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-Then fill in your Firebase project credentials:
+Define your database adapter type and configuration keys:
 
 ```env
+# Switch database: 'firebase' or 'custom'
+VITE_DATABASE_TYPE=firebase
+
+# Firebase configuration (Required if VITE_DATABASE_TYPE=firebase)
 VITE_FIREBASE_API_KEY=your_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
@@ -116,43 +122,29 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
 
->  **Never commit your `.env` file.** It is already listed in `.gitignore`.
+> **Never commit your `.env` file.** It is already listed in `.gitignore`.
 
-### 4. Deploy Firestore security rules
+---
 
-```bash
-firebase deploy --only firestore:rules
-```
+## Running the Application
 
-### 5. Start the development server
+Depending on the value of `VITE_DATABASE_TYPE` in your `.env` file, choose one of the following run configurations:
 
+### Option A: Firebase Cloud Mode
+Ensure `VITE_DATABASE_TYPE=firebase` (or leave it blank) and start the frontend:
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+### Option B: Local Custom Backend Mode (Express + SQLite)
+Ensure `VITE_DATABASE_TYPE=custom` and start both the server and frontend in separate terminal windows:
+```bash
+# Terminal 1: Starts Express server on http://localhost:5000
+npm run backend
 
----
-
-##  Firebase Setup
-
-### Firestore Collections
-
-The app uses three top-level Firestore collections:
-
-| Collection | Purpose |
-|---|---|
-| `users/{uid}` | User profile (name, email, createdAt) |
-| `groups/{groupId}` | Group metadata (name, members array, memberIds array, createdBy) |
-| `expenses/{expenseId}` | Expense records (title, amount, paidBy, participants, group, userIds, timestamp) |
-
-### Security Rules
-
-The included `firestore.rules` ensures:
-
-- **`/users/{userId}`** — Only the authenticated user matching the document ID can read or write their own profile.
-- **`/expenses/{expenseId}`** — Any authenticated user can read/write expenses (scoped by `userIds` array in queries).
-- **`/groups/{groupId}`** — Any authenticated user can read/write groups (scoped by `memberIds` array in queries).
+# Terminal 2: Starts React client on http://localhost:5173
+npm run dev
+```
 
 ---
 
@@ -161,6 +153,7 @@ The included `firestore.rules` ensures:
 | Script | Description |
 |---|---|
 | `npm run dev` | Start the Vite development server |
+| `npm run backend` | Start the local Express backend server |
 | `npm run build` | Build the production bundle to `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Run ESLint on the source code |
@@ -194,11 +187,10 @@ Splitsexp uses a **Material Design 3**-inspired token system built directly into
 
 ##  Key Architectural Decisions
 
-- **No Redux / Context store** — User state is lifted to `App.jsx` and passed down as props. Simple and predictable.
-- **Firebase auth persistence** — `subscribeToAuthChanges` uses Firebase's `onAuthStateChanged` so the session survives page refreshes automatically.
-- **Route-state communication** — The Dashboard's "Create Group" button navigates to `/groups` with `{ state: { openCreateModal: true } }`, which GroupManagement reads via `useLocation` to auto-open the create modal. No shared global state needed.
-- **Optimistic UI updates** — After creating a group or adding a member, the local React state is updated immediately without refetching from Firestore.
-- **Custom delete modal** — Group deletion uses a purpose-built React confirmation dialog instead of the browser's `window.confirm()` for a consistent premium UI experience.
+- **Dynamic Database Router** — `src/services/db.js` dynamically routes all database and auth functions to either `db_firebase.js` or `db_custom.js` at runtime based on the `.env` configuration, enabling seamless switching between Firebase Cloud and local SQLite.
+- **Self-Hosted OCR Assets** — Hosted Tesseract Web Worker and WASM core files locally inside `/public/tesseract` to prevent cross-origin errors (CORS), enable offline support, bypass Content Security Policies (CSP), and dramatically speed up scanning.
+- **Optimized OCR Parser** — Canvas scaling in `preprocessImage` prevents memory exhaustion on large mobile uploads, while the regex parser handles line descriptions and missing decimals (e.g. `840.0`), automatically dropping fallback grand totals from the item list.
+- **State management** — User state is lifted to `App.jsx` and passed down as props. Simple, lightweight, and predictable.
 
 ---
 
@@ -221,5 +213,5 @@ This project is licensed under the **MIT License**.
 ---
 
 <div align="center">
-  <sub>Built using React, Firebase & Tailwind CSS</sub>
+  <sub>Built using React, Firebase, Express, SQLite & Tailwind CSS</sub>
 </div>
