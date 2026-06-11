@@ -16,6 +16,7 @@ export const loginWithGoogle = activeDb.loginWithGoogle;
 export const getExpenses = activeDb.getExpenses;
 export const addExpense = activeDb.addExpense;
 export const getBalances = activeDb.getBalances;
+export const deleteExpense = activeDb.deleteExpense;
 
 // Export all Groups services
 export const createGroup = activeDb.createGroup;

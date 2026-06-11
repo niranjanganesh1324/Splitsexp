@@ -339,6 +339,29 @@ app.get('/api/expenses', authenticateToken, async (req, res) => {
   }
 });
 
+// Delete Expense
+app.delete('/api/expenses/:id', authenticateToken, async (req, res) => {
+  const expenseId = req.params.id;
+
+  try {
+    const expense = await dbGet("SELECT paidBy FROM expenses WHERE id = ?", [expenseId]);
+    if (!expense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    // Only allow deletion if user is the one who paid for it
+    if (expense.paidBy !== req.user.id) {
+      return res.status(403).json({ message: "Only the user who paid for this expense can delete it" });
+    }
+
+    await dbRun("DELETE FROM expenses WHERE id = ?", [expenseId]);
+    res.json({ message: "Expense deleted successfully" });
+  } catch (err) {
+    console.error("Delete expense error:", err);
+    res.status(500).json({ message: "Server error deleting expense" });
+  }
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`Backend server is running on http://localhost:${PORT}`);

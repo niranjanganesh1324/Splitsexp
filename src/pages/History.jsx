@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getExpenses } from '../services/db';
+import { getExpenses, deleteExpense } from '../services/db';
 
 function History({ user }) {
   const [expenses, setExpenses] = useState([]);
@@ -19,6 +19,18 @@ function History({ user }) {
         });
     }
   }, [user]);
+
+  const handleDeleteClick = async (expenseId) => {
+    if (window.confirm("Are you sure you want to delete this expense? This will restore balances for all participants.")) {
+      try {
+        await deleteExpense(expenseId);
+        setExpenses(expenses.filter(e => e.id !== expenseId));
+      } catch (err) {
+        console.error("Error deleting expense:", err);
+        alert("Failed to delete the expense. Please try again.");
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -76,12 +88,13 @@ function History({ user }) {
                 <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant">Who Paid</th>
                 <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant text-right">Total Amount</th>
                 <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant text-right">Your Share</th>
+                <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {displayExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-md py-xl text-center text-on-surface-variant font-body-md">
+                  <td colSpan="6" className="px-md py-xl text-center text-on-surface-variant font-body-md">
                     No expenses recorded yet. Start splitting expenses with your circles!
                   </td>
                 </tr>
@@ -138,6 +151,17 @@ function History({ user }) {
                     </td>
                     <td className="px-md py-md text-right">
                       <span className={`font-label-md text-label-md ${shareClass}`}>{shareText}</span>
+                    </td>
+                    <td className="px-md py-md text-right">
+                      {iPaid && (
+                        <button 
+                          onClick={() => handleDeleteClick(exp.id)}
+                          className="text-error hover:text-error/80 transition-colors p-xs bg-transparent border-none cursor-pointer inline-flex items-center justify-center"
+                          title="Delete expense"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

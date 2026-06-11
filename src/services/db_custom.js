@@ -236,3 +236,17 @@ export const deleteGroup = async (groupId) => {
 
   return res.json();
 };
+
+export const deleteExpense = async (expenseId) => {
+  const res = await fetch(`${API_URL}/expenses/${expenseId}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to delete expense");
+  }
+
+  return res.json();
+};

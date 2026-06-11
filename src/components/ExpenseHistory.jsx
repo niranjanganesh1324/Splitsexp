@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getExpenses } from '../services/db';
+import { getExpenses, deleteExpense } from '../services/db';
 
 function ExpenseHistory({ user }) {
   const [expenses, setExpenses] = useState([]);
@@ -19,6 +19,18 @@ function ExpenseHistory({ user }) {
         });
     }
   }, [user]);
+
+  const handleDeleteClick = async (expenseId) => {
+    if (window.confirm("Are you sure you want to delete this expense? This will restore balances for all participants.")) {
+      try {
+        await deleteExpense(expenseId);
+        setExpenses(expenses.filter(e => e.id !== expenseId));
+      } catch (err) {
+        console.error("Error deleting expense:", err);
+        alert("Failed to delete the expense. Please try again.");
+      }
+    }
+  };
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading expenses...</div>;
@@ -80,18 +92,40 @@ function ExpenseHistory({ user }) {
             const involvedAmount = isPaidByMe ? (exp.amount - myShare) : myShare;
 
             return (
-              <div key={exp.id} className="expense-card">
+              <div key={exp.id} className="expense-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '600', fontSize: '1.1rem', marginBottom: '4px' }}>{exp.description}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     {new Date(exp.timestamp).toLocaleDateString()} • Paid by {isPaidByMe ? 'You' : 'Someone else'}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 'bold' }}>${exp.amount.toFixed(2)}</div>
-                  <div style={{ fontSize: '0.85rem', color: isPaidByMe ? 'var(--success)' : 'var(--danger)' }}>
-                    {isPaidByMe ? '+' : '-'}${involvedAmount.toFixed(2)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 'bold' }}>${exp.amount.toFixed(2)}</div>
+                    <div style={{ fontSize: '0.85rem', color: isPaidByMe ? 'var(--success)' : 'var(--danger)' }}>
+                      {isPaidByMe ? '+' : '-'}${involvedAmount.toFixed(2)}
+                    </div>
                   </div>
+                  {isPaidByMe && (
+                    <button 
+                      onClick={() => handleDeleteClick(exp.id)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--danger)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'opacity 0.2s'
+                      }}
+                      className="hover:opacity-80"
+                      title="Delete expense"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );

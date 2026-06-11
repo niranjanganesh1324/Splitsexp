@@ -77,7 +77,6 @@ function Landing({ onLoginSuccess }) {
           </p>
           <div className="flex flex-col sm:flex-row gap-sm pt-md">
             <button onClick={handleSignUpClick} className="bg-primary text-on-primary px-lg py-md rounded-xl font-label-md shadow-lg hover:opacity-90 transition-all">Sign Up Free</button>
-            <button className="bg-surface-container-lowest border border-outline-variant text-primary px-lg py-md rounded-xl font-label-md hover:bg-surface-container transition-all">Watch Demo</button>
           </div>
         </div>
         

@@ -300,3 +300,7 @@ export const addMemberToGroup = async (groupId, memberName) => {
 export const deleteGroup = async (groupId) => {
   await deleteDoc(doc(db, "groups", groupId));
 };
+
+export const deleteExpense = async (expenseId) => {
+  await deleteDoc(doc(db, "expenses", expenseId));
+};

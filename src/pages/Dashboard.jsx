@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getExpenses, getGroups } from '../services/db';
+import { getExpenses, getGroups, deleteExpense } from '../services/db';
 
 function Dashboard({ user }) {
   const navigate = useNavigate();
@@ -23,6 +23,18 @@ function Dashboard({ user }) {
         });
     }
   }, [user]);
+
+  const handleDeleteClick = async (expenseId) => {
+    if (window.confirm("Are you sure you want to delete this expense? This will restore balances for all participants.")) {
+      try {
+        await deleteExpense(expenseId);
+        setExpenses(expenses.filter(e => e.id !== expenseId));
+      } catch (err) {
+        console.error("Error deleting expense:", err);
+        alert("Failed to delete the expense. Please try again.");
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -217,17 +229,28 @@ function Dashboard({ user }) {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      {iPaid ? (
-                        <div className="text-right">
-                          <p className="font-label-sm text-label-sm text-secondary">You lent</p>
-                          <p className="font-headline-sm text-headline-sm text-secondary">${impactAmount.toFixed(2)}</p>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="font-label-md text-label-md text-primary">You owe</p>
-                          <p className="font-headline-md text-headline-md text-primary">${impactAmount.toFixed(2)}</p>
-                        </>
+                    <div className="flex items-center gap-sm">
+                      <div className="text-right">
+                        {iPaid ? (
+                          <div className="text-right">
+                            <p className="font-label-sm text-label-sm text-secondary">You lent</p>
+                            <p className="font-headline-sm text-headline-sm text-secondary">${impactAmount.toFixed(2)}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-label-md text-label-md text-primary">You owe</p>
+                            <p className="font-headline-md text-headline-md text-primary">${impactAmount.toFixed(2)}</p>
+                          </>
+                        )}
+                      </div>
+                      {iPaid && (
+                        <button 
+                          onClick={() => handleDeleteClick(exp.id)}
+                          className="text-error hover:text-error/80 transition-colors p-xs bg-transparent border-none cursor-pointer inline-flex items-center justify-center"
+                          title="Delete expense"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
                       )}
                     </div>
                   </div>
